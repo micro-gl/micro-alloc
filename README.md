@@ -1,13 +1,70 @@
 # micro{alloc}
-
 fast, super slim, embeddable, headers files only **`C++11`** memory allocation library.
 
 check out our website at [micro-gl.github.io/docs/micro-alloc/](micro-gl.github.io/docs/micro-alloc)
 
+# Introduction
+This lib includes several memory resources, that you can configure and can be optionally used with the included   
+polymorphic allocator(included), which implements a valid `C++11` allocator.  
+It is advised to have a look at the `examples` folder as it is much simple to see  
+the following memory resources are implemented:
+### **Dynamic memory (heap)**:  
+**Best-Fit** free list dynamic memory allocator with blocks coalescing.   
+Allocation is **O(free-list-size)**  
+Free is:  
+- **O(1)** when coalescing with neighbor free blocks (because we know exactly where to insert),  
+- **O(free-list-size)** when we can't coalesce.  
+**Notes:**  
+free blocks are inserted sorted by their address ascending, this is known to reduce fragmentation  
+minimal block size 16 bytes for 32 bit pointer types and 32 bytes for 64 bits pointers.  
+
+### **Pool memory**:
+Pool block allocator    
+Allocations are **O(1)**  
+Free is:  
+- **O(1)** when {guard_against_double_free==false} (in constructor)
+- **O(free-list-size)** when {guard_against_double_free==true} (in constructor)
+**Notes:**  
+Minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
+
+### **Stack memory**:
+Stack block allocator  
+Free is **O(1)**  
+Allocations are **O(1)**  
+
+**notes:** 
+- Allocations and de-allocations are SAFE. de-allocations will fail if trying 
+to free NOT the latest allocated block.
+- Each allocation requests a block + a small footer, that holds the size of the block
+including the size of aligned footer.
+- Upon free operations, the footer is read and compared to the free address in order
+to validate the **LIFO** property of the stack.
+- At all times, we keep track at the address after the end of the stack
+- Minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
+- Blocks print is user_space = block_size - size_of_aligned_footer
+
+### **Linear memory**:
+Linear memory allocator
+
+Memory is given progressively without freeing. user can only reset the pointer to the
+beginning. this memory is not shrinking.
+- Allocations are **O(1)**
+- Free does not do anything
+
+### **STD memory**:
+Standard memory resource    
+Uses the standard default memory allocations operators techniques present in the system
+
 # Usage
-Because `micro-alloc` is a headers only library, installing just means copying the `include/`
-folder to your system search path or another folder and then set the include path in your build.
-the `cmake` file also has an install target, that will copy everything in your system via ```cmake install```.
+Because `micro-alloc` is a headers only library, installing just means copying the `include/`  
+folder to your system search path or another folder and then set the include path in your build.  
+the `cmake` file also has an install target, that will copy everything in your system via 
+```bash
+$ mkdir cmake-build-release
+$ cd cmake-build-release
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ cmake --install .
+```
 
 ## Using *CMake*
 Download the project to a sub folder of your project. inside your **`CMakeLists.txt`** add
@@ -21,10 +78,10 @@ target_include_directories(app path/to/micro-alloc/install/include/)
 ```
 
 # Running Examples and testing
-TODO
+see `examples` folder
 
 # How to use
 see `examples` folder or website
 ```text
-Author: Tomer Shalev, tomer.shalev@gmail.com
+Author: Tomer Shalev, tomer.shalev@gmail.com, all rights reserved (2021)
 ```

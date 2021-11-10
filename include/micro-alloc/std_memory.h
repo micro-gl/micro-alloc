@@ -21,7 +21,7 @@
 /**
  * standard memory resource:
  *
- * uses the standard default memory allocations techniques present in the system
+ * uses the standard default memory allocations operators techniques present in the system
  *
  * @author Tomer Riko Shalev
  */

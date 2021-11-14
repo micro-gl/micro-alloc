@@ -1,9 +1,9 @@
 # micro{alloc}
-fast, super slim, embeddable, headers files only **`C++11`** memory allocation library.
+**Fast**, super **slim**, **embeddable**, **headers files** only **`C++11`** memory allocation library.  
+**No standard library is required**
 
-check out our website at [micro-gl.github.io/docs/micro-alloc/](micro-gl.github.io/docs/micro-alloc)
-
-# Introduction
+Check out our website at [micro-gl.github.io/docs/micro-alloc/](micro-gl.github.io/docs/micro-alloc)
+## Introduction
 This lib includes several memory resources, that you can configure and can be optionally used with the included   
 polymorphic allocator(included), which implements a valid `C++11` allocator.  
 It is advised to have a look at the `examples` folder as it is much simple to see  
@@ -55,30 +55,58 @@ beginning. this memory is not shrinking.
 Standard memory resource    
 Uses the standard default memory allocations operators techniques present in the system
 
-# Usage
-Because `micro-alloc` is a headers only library, installing just means copying the `include/`  
-folder to your system search path or another folder and then set the include path in your build.  
-the `cmake` file also has an install target, that will copy everything in your system via 
-```bash
+## Installing `micro{alloc}`
+`micro-alloc` is a headers only library, which gives the following install possibilities:
+1. Using `cmake` to invoke the `install` target, that will copy everything in your system via
+```
 $ mkdir cmake-build-release
 $ cd cmake-build-release
 $ cmake -DCMAKE_BUILD_TYPE=Release ..
 $ cmake --install .
 ```
+2. Copying the `include/micro-alloc` to anywhere you want.
 
-## Using *CMake*
-Download the project to a sub folder of your project. inside your **`CMakeLists.txt`** add
+## Consuming `micro{alloc}`
+Following options are available:
+1. copy the project to a sub folder of your project. inside your **`CMakeLists.txt`** add
 ```cmake
 add_subdirectory(/path/to/micro-alloc)
 target_link_libraries(your_app micro-alloc)
 ```
-If you installed **`micro{alloc}`** (see above) at your system, you can instead
+2. If you installed **`micro{alloc}`** with option 1 (see above) at your system, you can instead
 ```cmake
-target_include_directories(app path/to/micro-alloc/install/include/)
+find_package(micro-alloc CONFIG REQUIRED)
+target_link_libraries(your_app micro-alloc::micro-alloc)
 ```
+3. If you have not installed, you can add in your app's `CMakeLists.txt`
+```cmake
+target_include_directories(app path/to/micro-alloc/folder/include/)
+```
+4. If you manually copied the `include/micro-alloc` to the default system include path,  
+   you can use `cmake/Findmicro-alloc.cmake` to automatically create the cmake targets
+```cmake
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/path/to/Findmicro-alloc/folder)
+find_package(micro-alloc REQUIRED)
+target_link_libraries(your_app micro-alloc::micro-alloc)
+```
+5. Just copy the `include/micro-alloc` into a sub folder of your project and include the header  
+   files you need with relative path in your source files.
 
-# Running Examples and testing
-see `examples` folder
+## Running Examples
+First make sure you have
+- [cmake](https://cmake.org/download/) installed at your system.
+
+There are two ways:
+1. Use your favourite IDE to load the root `CMakeLists.txt` file, and then it   
+   will pick up all of the targets, including the examples
+2. Using the command line:
+```bash
+$ mkdir cmake-build-release
+$ cd cmake-build-release
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ cmake --build . --target <example_name>
+$ ../examples/bin/example_name
+```
 
 # How to use
 see `examples` folder or website

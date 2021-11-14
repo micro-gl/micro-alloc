@@ -10,17 +10,10 @@ set(CMAKE_CXX_FLAGS_RELEASE " -fno-rtti -fno-exceptions -fno-unwind-tables \
                             -ffast-math -fno-threadsafe-statics \
                             -fdata-sections -ffunction-sections \
                             " CACHE INTERNAL "" FORCE)
-#-nostdlib
-message("using compiler: ${CMAKE_CXX_COMPILER_ID}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 set(libs micro-alloc)
-
-message(${CMAKE_BINARY_DIR})
-message(${CMAKE_MODULE_PATH})
-message(${PROJECT_SOURCE_DIR})
-message(${PROJECT_BINARY_DIR})
 
 set(SOURCES
         test_allocators.cpp

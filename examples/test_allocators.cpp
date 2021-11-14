@@ -1,10 +1,11 @@
-#define DEBUG_ALLOCATOR
+#define MICRO_ALLOC_DEBUG
 
 #include <micro-alloc/dynamic_memory.h>
 #include <micro-alloc/pool_memory.h>
 #include <micro-alloc/linear_memory.h>
 #include <micro-alloc/stack_memory.h>
 #include <micro-alloc/std_memory.h>
+using namespace micro_alloc;
 
 void test_stack_allocator() {
     using byte= unsigned char;

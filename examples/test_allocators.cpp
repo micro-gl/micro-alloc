@@ -7,7 +7,7 @@
 #include <micro-alloc/std_memory.h>
 using namespace micro_alloc;
 
-void test_stack_allocator() {
+void test_stack_memory() {
     using byte= unsigned char;
     const int size = 5000;
     byte memory[size];
@@ -38,7 +38,7 @@ void test_stack_allocator() {
 
 }
 
-void test_dynamic_allocator() {
+void test_polymorphic() {
     using byte= unsigned char;
     const int size = 5000;
     byte memory[size];
@@ -64,7 +64,7 @@ void test_dynamic_allocator() {
 
 }
 
-void test_pool_allocator() {
+void test_pool_memory() {
     using byte= unsigned char;
     const int size = 1024;
     byte memory[size];
@@ -88,7 +88,7 @@ void test_pool_allocator() {
     //    alloc.free(p1);
 }
 
-void test_linear_allocator() {
+void test_linear_memory() {
     using byte= unsigned char;
     const int size = 1024;
     byte memory[size];
@@ -119,7 +119,7 @@ void test_linear_allocator() {
 
 }
 
-void test_std_allocator() {
+void test_std_memory() {
 
     std_memory alloc;
 
@@ -143,9 +143,9 @@ void test_std_allocator() {
 
 
 int main() {
-    test_std_allocator();
-    test_stack_allocator();
-    test_dynamic_allocator();
-    test_pool_allocator();
-    test_linear_allocator();
+    test_std_memory();
+    test_stack_memory();
+    test_polymorphic();
+    test_pool_memory();
+    test_linear_memory();
 }

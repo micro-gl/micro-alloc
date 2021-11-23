@@ -12,7 +12,7 @@
 
 #include "memory_resource.h"
 
-#ifdef DEBUG_ALLOCATOR
+#ifdef MICRO_ALLOC_DEBUG
 #include <iostream>
 #endif
 

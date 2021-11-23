@@ -10,43 +10,9 @@
 ========================================================================================*/
 #pragma once
 
+#include "traits.h"
+
 namespace micro_alloc {
-
-    namespace std_rebind_allocator_traits {
-
-        template<class T>
-        struct remove_reference {
-            typedef T type;
-        };
-        template<class T>
-        struct remove_reference<T &> {
-            typedef T type;
-        };
-        template<class T>
-        struct remove_reference<T &&> {
-            typedef T type;
-        };
-
-        template<class _Tp>
-        inline
-        typename remove_reference<_Tp>::type &&
-        move(_Tp &&__t) noexcept {
-            typedef typename remove_reference<_Tp>::type _Up;
-            return static_cast<_Up &&>(__t);
-        }
-
-        template<class _Tp>
-        inline _Tp &&
-        forward(typename remove_reference<_Tp>::type &__t) noexcept {
-            return static_cast<_Tp &&>(__t);
-        }
-
-        template<class _Tp>
-        inline _Tp &&
-        forward(typename remove_reference<_Tp>::type &&__t) noexcept {
-            return static_cast<_Tp &&>(__t);
-        }
-    }
 
     /**
      * standard allocator
@@ -65,7 +31,7 @@ namespace micro_alloc {
 
         template<class U, class... Args>
         void construct(U *p, Args &&... args) {
-            new(p) U(std_rebind_allocator_traits::forward<Args>(args)...);
+            new(p) U(micro_alloc::traits::forward<Args>(args)...);
         }
 
         T *allocate(size_t n) { return (T *) operator new(n * sizeof(T)); }

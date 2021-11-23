@@ -17,6 +17,13 @@ set(libs micro-alloc)
 
 set(SOURCES
         test_allocators.cpp
+        test_stack_memory.cpp
+        test_dynamic_memory.cpp
+        test_pool_memory.cpp
+        test_linear_memory.cpp
+        test_std_memory.cpp
+        test_polymorphic_allocator.cpp
+        test_utils.cpp
         )
 
 set(SOURCES_SHARED "")

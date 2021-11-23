@@ -72,22 +72,13 @@ namespace micro_alloc {
         struct base_header_t {
             uptr size_and_status = 0;
 
-            uptr size() const {
-                return size_and_status & (~(uptr(1)));
-            }
-
+            uptr size() const { return size_and_status & (~(uptr(1))); }
             void set_size_and_status(uptr size, bool status) {
                 uptr stat = status ? 1 : 0;
                 size_and_status = size | stat;
             }
-
-            bool is_allocated() const {
-                return size_and_status & 1;
-            }
-
-            bool toggle_allocated() {
-                return size_and_status ^= (uptr(1));
-            }
+            bool is_allocated() const { return size_and_status & 1; }
+            bool toggle_allocated() { return size_and_status ^= (uptr(1)); }
         };
 
         using footer_t = base_header_t;
@@ -95,11 +86,11 @@ namespace micro_alloc {
         struct header_t {
             base_header_t base;
             // following fields are for free block
-            header_t *prev = nullptr;
-            header_t *next = nullptr;
+            header_t * prev = nullptr;
+            header_t * next = nullptr;
         };
 
-        header_t *_free_list_root = nullptr;
+        header_t * _free_list_root = nullptr;
 
         struct block_t {
             uptr aligned_from = 0, aligned_to = 0;
@@ -108,32 +99,22 @@ namespace micro_alloc {
             header_t *header() const {
                 return reinterpret_cast<header_t *>(aligned_from);
             }
-
             footer_t *footer() const {
                 return reinterpret_cast<footer_t *>(aligned_to -
-                                                    allocator->align_up(sizeof(footer_t)));
+                      allocator->align_up(sizeof(footer_t)));
             }
-
-            uptr size() const {
-                return header()->base.size();
-            }
-
+            uptr size() const { return header()->base.size(); }
             void set_size_and_status(uptr size, bool status) const {
                 uptr stat = status ? 1 : 0;
                 uptr size_and_status = size | stat;
                 header()->base.set_size_and_status(size_and_status, status);
                 footer()->set_size_and_status(size_and_status, status);
             }
-
-            bool is_allocated() const {
-                return header()->base.is_allocated();
-            }
-
+            bool is_allocated() const { return header()->base.is_allocated(); }
             void toggle_allocated() const {
                 header()->base.toggle_allocated();
                 footer()->toggle_allocated();
             }
-
             bool sanity_test() const {
                 return footer()->size_and_status == header()->base.size_and_status;
             }
@@ -158,34 +139,22 @@ namespace micro_alloc {
             return result;
         }
 
-        static uptr size_of_free_block_header() {
-            return sizeof(header_t);
-        }
-
-        static uptr size_of_block_base_header() {
-            return sizeof(base_header_t);
-        }
-
-        static uptr size_of_block_footer() {
-            return sizeof(footer_t);
-        }
-
+        static uptr size_of_free_block_header() { return sizeof(header_t); }
+        static uptr size_of_block_base_header() { return sizeof(base_header_t); }
+        static uptr size_of_block_footer() { return sizeof(footer_t); }
         uint minimal_size_of_any_block() {
             return align_up(size_of_free_block_header()) +
                    align_up(size_of_block_footer());
         }
-
         uint aligned_base_header_and_footer() {
             // minus the next prev pointers
             return (align_up(size_of_block_base_header()) +
                     align_up(size_of_block_footer()));
         }
-
         uint effective_payload_size_of_block(header_t *block) {
             // minus the next prev pointers
             return block->base.size() - aligned_base_header_and_footer();
         }
-
         uptr compute_required_block_size_by_payload_size(uint payload_size) {
             payload_size = align_up(payload_size);
             auto allocated_block = align_up(size_of_block_base_header()) +
@@ -569,6 +538,5 @@ namespace micro_alloc {
             equals = this->_ptr == casted_other->_ptr;
             return equals;
         }
-
     };
 }

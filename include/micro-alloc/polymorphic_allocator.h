@@ -11,41 +11,9 @@
 #pragma once
 
 #include "memory_resource.h"
+#include "traits.h"
 
 namespace micro_alloc {
-
-    namespace poly_alloc_traits {
-        template<class T> struct remove_reference      {typedef T type;};
-        template<class T> struct remove_reference<T&>  {typedef T type;};
-        template<class T> struct remove_reference<T&&> {typedef T type;};
-
-        template <class _Tp> inline typename remove_reference<_Tp>::type&&
-        move(_Tp&& __t) noexcept
-        {
-            typedef typename remove_reference<_Tp>::type _Up;
-            return static_cast<_Up&&>(__t);
-        }
-
-        template <class _Tp> inline _Tp&&
-        forward(typename remove_reference<_Tp>::type& __t) noexcept
-        { return static_cast<_Tp&&>(__t); }
-
-        template <class _Tp> inline _Tp&&
-        forward(typename remove_reference<_Tp>::type&& __t) noexcept
-        { return static_cast<_Tp&&>(__t); }
-
-        template <class Tp, Tp _v>
-        struct integral_constant
-        {
-            static constexpr const Tp      value = _v;
-            typedef Tp               value_type;
-            typedef integral_constant type;
-            constexpr operator value_type() const noexcept {return value;}
-        };
-
-        typedef integral_constant<bool, true> true_type;
-        typedef integral_constant<bool, false> false_type;
-    }
 
     /**
     * polymorphic allocator, that uses exchangeable memory resources
@@ -74,42 +42,34 @@ namespace micro_alloc {
 
         memory *resource() const { return _mem; }
 
-        template<class U, class... Args>
-        void construct(U *p, Args &&... args) {
-            new(p) U(poly_alloc_traits::forward<Args>(args)...);
+        template<class U, class... Args> void construct(U *p, Args &&... args) {
+            new(p) U(micro_alloc::traits::forward<Args>(args)...);
         }
 
+        template<class U> void destroy( U* p ) { p->~U(); }
+
         T *allocate(size_t n) { return (T *) _mem->malloc(n * sizeof(T)); }
-
         void deallocate(T *p, size_t n = 0) { _mem->free(p); }
-
         void *allocate_bytes(size_t nbytes, size_t alignment = default_align) {
             return _mem->malloc(nbytes);
         }
-
         void deallocate_bytes(void *p, size_t nbytes, size_t alignment = default_align) {
             _mem->free(p);
         }
-
-        template<class U>
-        U *allocate_object(size_t n = 1) {
+        template<class U> U *allocate_object(size_t n = 1) {
             return allocate_bytes(n * sizeof(U), alignof(U));
         }
-
-        template<class U>
-        void deallocate_object(U *p, size_t n = 1) {
+        template<class U> void deallocate_object(U *p, size_t n = 1) {
             deallocate_bytes(p, sizeof(U), alignof(U));
         }
 
-        template<class U, class... CtorArgs>
-        U *new_object(CtorArgs &&... ctor_args) {
+        template<class U, class... CtorArgs> U *new_object(CtorArgs &&... ctor_args) {
             U *p = allocate_object<U>();
-            construct(p, poly_alloc_traits::forward<CtorArgs>(ctor_args)...);
+            construct(p, micro_alloc::traits::forward<CtorArgs>(ctor_args)...);
             return p;
         }
 
-        template<class U>
-        void delete_object(U *p) {
+        template<class U> void delete_object(U *p) {
             p->~U();
             deallocate_object(p);
         }
@@ -120,8 +80,7 @@ namespace micro_alloc {
             return polymorphic_allocator<T, uintptr_type>(*this);
         }
 
-        template<class U>
-        struct rebind {
+        template<class U> struct rebind {
             typedef polymorphic_allocator<U, uintptr_type> other;
         };
     };

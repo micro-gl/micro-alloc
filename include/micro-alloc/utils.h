@@ -89,4 +89,53 @@ namespace micro_alloc {
         // de-allocate memory
         rebind_allocator.deallocate(raw_memory);
     }
+
+    /**
+     * Allocate and Construct a single object
+     * @tparam U object type
+     * @tparam allocator_type allocator type
+     * @tparam Args constructor arg types
+     * @param allocator allocator to use
+     * @param args constructor arguments
+     * @return a pointer to object
+     */
+    template<class U, class allocator_type, class... Args>
+    U * new_object(const allocator_type & allocator,
+                   Args &&... args) {
+        // rebind the allocator to byte allocator
+        using rebind_allocator_t = typename allocator_type::template rebind<U>::other;
+        rebind_allocator_t rebind_allocator(allocator);
+
+        // allocate memory
+        U * object_memory = rebind_allocator.allocate(1);
+
+        // construct object
+        new(object_memory) U(micro_alloc::traits::forward<Args>(args)...);
+
+        return object_memory;
+    }
+
+    /**
+     * Destruct and Deallocate an object
+     * NOTE:
+     * - You must use the same allocator, that was used to allocate the object
+     * @tparam U object type
+     * @tparam allocator_type allocator type
+     * @param pointer pointer to the object
+     * @param allocator allocator to use
+     */
+    template<class U, class allocator_type>
+    void delete_object(U * pointer,
+                      const allocator_type & allocator) {
+        // rebind the allocator to byte allocator
+        using rebind_allocator_t = typename allocator_type::template rebind<U>::other;
+        rebind_allocator_t rebind_allocator(allocator);
+
+        // destruct object
+        (pointer)->~U();
+
+        // de-allocate memory
+        rebind_allocator.deallocate(pointer);
+    }
+
 }

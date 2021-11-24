@@ -55,6 +55,9 @@ namespace micro_alloc {
 
     static constexpr unsigned int PS = sizeof (void *);
 
+    /**
+     * An integral type, that is suitable to hold a pointer address
+     */
     using uintptr_type = typename cond<
             PS==sizeof(unsigned short), unsigned short ,
             typename cond<

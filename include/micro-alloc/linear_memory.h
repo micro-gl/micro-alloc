@@ -21,13 +21,13 @@
 namespace micro_alloc {
 
 /**
- * linear memory allocator:
+ * Linear Memory Resource:
  *
- * memory is given progressively without freeing. user can only reset the pointer to the
- * beginning. this memory is not shrinking.
+ * Memory is given progressively without freeing. user can only reset the pointer to the
+ * beginning. This memory is not shrinking.
  *
- * - allocations are O(1)
- * - free does not do anything
+ * - Allocations are O(1)
+ * - Free does not do anything
  *
  * @tparam uintptr_type unsigned integer type that can hold a pointer
  * @tparam alignment alignment requirement, must be valid power of 2, that can satisfy
@@ -38,7 +38,7 @@ namespace micro_alloc {
  *
  * @author Tomer Riko Shalev
  */
-    template<typename uintptr_type=unsigned long>
+    template<typename uintptr_type=micro_alloc::uintptr_type>
     class linear_memory : public memory_resource<uintptr_type> {
     private:
         using base = memory_resource<uintptr_type>;

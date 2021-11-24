@@ -16,11 +16,11 @@
 namespace micro_alloc {
 
     /**
-    * polymorphic allocator, that uses exchangeable memory resources
+    * Polymorphic Allocator, that uses exchangeable memory resources
     * @tparam T the allocated object type
     * @tparam uintptr_type per system unsigned integral type that is the size of a pointer
     */
-    template<typename T=char, typename uintptr_type=unsigned long>
+    template<typename T=char, typename uintptr_type=micro_alloc::uintptr_type>
     class polymorphic_allocator {
     public:
         using value_type = T;

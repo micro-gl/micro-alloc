@@ -17,7 +17,7 @@ public:
     ~dummy_t() { std::cout << "destructed !!" << std::endl; }
 };
 
-void test_polymorphic() {
+void test_1() {
     const int size = 5000;
     byte memory[size];
 
@@ -50,5 +50,5 @@ void test_polymorphic() {
 }
 
 int main() {
-    test_polymorphic();
+    test_1();
 }

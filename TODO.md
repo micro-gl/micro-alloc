@@ -1,4 +1,0 @@
-- add a macro to have throwing capabilities.
-- add examples for
-    - each memory resource
-    - polymorphic allocator wrapper

@@ -4,7 +4,7 @@
 
 using namespace micro_alloc;
 
-void test_std_memory() {
+void test_1() {
 
     std_memory alloc;
 
@@ -28,5 +28,5 @@ void test_std_memory() {
 
 
 int main() {
-    test_std_memory();
+    test_1();
 }

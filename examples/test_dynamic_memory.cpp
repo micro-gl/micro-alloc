@@ -4,7 +4,7 @@
 
 using namespace micro_alloc;
 
-void test_polymorphic() {
+void test_1() {
     using byte= unsigned char;
     const int size = 5000;
     byte memory[size];
@@ -31,5 +31,5 @@ void test_polymorphic() {
 }
 
 int main() {
-    test_polymorphic();
+    test_1();
 }

@@ -15,7 +15,10 @@
 namespace micro_alloc {
 
     /**
-     * standard allocator
+     * Standard Allocator:
+     *
+     * Uses the present new and delete operators
+     *
      * @tparam T the allocated object type
      */
     template<typename T=unsigned char>
@@ -26,7 +29,6 @@ namespace micro_alloc {
 
         template<class U>
         explicit std_rebind_allocator(const std_rebind_allocator<U> &other) noexcept {};
-
         explicit std_rebind_allocator() = default;
 
         template<class U, class... Args>
@@ -35,11 +37,9 @@ namespace micro_alloc {
         }
 
         T *allocate(size_t n) { return (T *) operator new(n * sizeof(T)); }
-
         void deallocate(T *p, size_t n = 0) { operator delete(p); }
 
-        template<class U>
-        struct rebind {
+        template<class U> struct rebind {
             typedef std_rebind_allocator<U> other;
         };
     };

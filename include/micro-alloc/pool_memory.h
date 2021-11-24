@@ -21,14 +21,15 @@
 namespace micro_alloc {
 
     /**
-     * memory pool block allocator
-     * free is:
+     * Pool Memory Resource
+     *
+     * Free is:
      * - O(1) when {guard_against_double_free==false} (in constructor)
      * - O(free-list-size) when {guard_against_double_free==true} (in constructor)
      *
-     * allocations are O(1)
+     * Allocations are O(1)
      *
-     * minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
+     * Minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
      *
      * @tparam uintptr_type unsigned integer type that can hold a pointer
      * @tparam alignment alignment requirement, must be valid power of 2, that can satisfy
@@ -39,7 +40,7 @@ namespace micro_alloc {
      *
      * @author Tomer Riko Shalev
      */
-    template<typename uintptr_type=unsigned long>
+    template<typename uintptr_type=micro_alloc::uintptr_type>
     class pool_memory : public memory_resource<uintptr_type> {
     private:
         using base = memory_resource<uintptr_type>;

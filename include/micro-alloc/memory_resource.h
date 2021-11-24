@@ -10,13 +10,15 @@
 ========================================================================================*/
 #pragma once
 
+#include "utils.h"
+
 namespace micro_alloc {
 
 /**
- * memory resource is a runtime polymorphic interface for handling memory allocations
+ * Memory Resource is a runtime polymorphic interface for handling memory allocations
  * @tparam uintptr_type unsigned integer type that is the size of a pointer
  */
-    template<typename uintptr_type=unsigned long>
+    template<typename uintptr_type=micro_alloc::uintptr_type>
     class memory_resource {
     private:
         const char _type_id;
@@ -45,15 +47,10 @@ namespace micro_alloc {
         }
 
         static uptr ptr_to_int(const void *pointer) { return reinterpret_cast<uptr>(pointer); }
-
         static void *int_to_ptr(uptr integer) { return reinterpret_cast<void *>(integer); }
-
         template<typename T>
         static T int_to(uptr integer) { return reinterpret_cast<T>(integer); }
-
-        char type_id() const {
-            return _type_id;
-        }
+        char type_id() const { return _type_id; }
 
     public:
         /**

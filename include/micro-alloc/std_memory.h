@@ -21,15 +21,15 @@
 namespace micro_alloc {
 
     /**
-     * standard memory resource:
+     * Standard Memory Resource:
      *
      * uses the standard default memory allocations operators techniques present in the system
      *
      * @author Tomer Riko Shalev
      */
-    class std_memory : public memory_resource<unsigned long> {
+    class std_memory : public memory_resource<micro_alloc::uintptr_type> {
     private:
-        using base = memory_resource<unsigned long>;
+        using base = memory_resource<micro_alloc::uintptr_type>;
 
     public:
 

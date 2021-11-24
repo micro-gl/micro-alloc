@@ -12,31 +12,31 @@
 
 namespace micro_alloc {
 
+    struct throw_allocator_cannot_allocate_or_deallocate {};
+
     /**
-     * Void allocator, does not allocate anything
+     * Throw allocator, always throws exception. Does not use any std exceptions.
      * @tparam T the allocated object type
      */
     template<typename T=unsigned char>
-    class void_allocator {
+    class throw_allocator {
     public:
         using value_type = T;
         using size_t = unsigned long;
 
         template<class U>
-        explicit void_allocator(const void_allocator<U> &other) noexcept {};
-        explicit void_allocator() = default;
-
+        explicit throw_allocator(const throw_allocator<U> &other) noexcept {};
+        explicit throw_allocator() = default;
         template<class U, class... Args> void construct(U *p, Args &&... args) {}
-        T *allocate(size_t n) { return nullptr; }
-        void deallocate(T *p, size_t n = 0) {}
-
+        T *allocate(size_t n) { throw throw_allocator_cannot_allocate_or_deallocate(); }
+        void deallocate(T *p, size_t n = 0) { throw throw_allocator_cannot_allocate_or_deallocate(); }
         template<class U> struct rebind {
-            typedef void_allocator<U> other;
+            typedef throw_allocator<U> other;
         };
     };
 
     template<class T1, class T2>
-    bool operator==(const void_allocator<T1> &lhs, const void_allocator<T2> &rhs) noexcept {
+    bool operator==(const throw_allocator<T1> &lhs, const throw_allocator<T2> &rhs) noexcept {
         return true;
     }
 }

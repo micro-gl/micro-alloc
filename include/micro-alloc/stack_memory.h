@@ -19,21 +19,21 @@
 namespace micro_alloc {
 
     /**
-     * stack block allocator
+     * Stack Memory Resource
      *
-     * free is O(1)
-     * allocations are O(1)
+     * Free is O(1)
+     * Allocations are O(1)
      *
-     * notes:
-     * - allocations and de-allocations are SAFE. de-allocations will fail if trying
+     * Notes:
+     * - Allocations and de-allocations are SAFE. de-allocations will fail if trying
      *   to free NOT the latest allocated block.
-     * - each allocation requests a block + a small footer, that holds the size of the block
+     * - Each allocation requests a block + a small footer, that holds the size of the block
      *   including the size of aligned footer.
-     * - upon free operations, the footer is read and compared to the free address in order
+     * - Upon free operations, the footer is read and compared to the free address in order
      *   to validate the LIFO property of the stack.
-     * - at all times, we keep track at the address after the end of the stack
-     * - minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
-     * - blocks print is user_space = block_size - size_of_aligned_footer
+     * - At all times, we keep track at the address after the end of the stack
+     * - Minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
+     * - Blocks print is user_space = block_size - size_of_aligned_footer
      *
      * @tparam uintptr_type unsigned integer type that can hold a pointer
      * @tparam alignment alignment requirement, must be valid power of 2, that can satisfy
@@ -44,7 +44,7 @@ namespace micro_alloc {
      *
      * @author Tomer Riko Shalev
      */
-    template<typename uintptr_type=unsigned long>
+    template<typename uintptr_type=micro_alloc::uintptr_type>
     class stack_memory : public memory_resource<uintptr_type> {
     private:
         using base = memory_resource<uintptr_type>;

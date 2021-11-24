@@ -20,14 +20,17 @@
 namespace micro_alloc {
 
     /**
-     * best-fit free list dynamic memory allocator with blocks coalescing.
-     * allocation is O(free-list-size)
-     * free is:
+     * Dynamic Memory Resource:
+     *
+     * Best-fit free list dynamic memory allocator with blocks coalescing.
+     * Allocation is O(free-list-size)
+     * Free is:
      * - O(1) when coalescing with neighbor free blocks (because we know exactly where to insert),
      * - O(free-list-size) when we can't coalesce.
-     * notes:
-     * - free blocks are inserted sorted by their address ascending, this is known to reduce fragmentation
-     * - minimal block size 16 bytes for 32 bit pointer types and 32 bytes for 64 bits pointers.
+     *
+     * Notes:
+     * - Free blocks are inserted sorted by their address ascending, this is known to reduce fragmentation
+     * - Minimal block size 16 bytes for 32 bit pointer types and 32 bytes for 64 bits pointers.
      *
      * Allocated block layout is:
      * [ size|1 | ... payload .... | size|1 ]
@@ -35,8 +38,8 @@ namespace micro_alloc {
      * Free block layout is:
      * [ size|1 | prev | next | ... padding .... | size|1 ]
      *
-     * - size includes the whole block size in bytes, it is a power of 2, bigger than 1.
-     * - the last bit of size indicates allocation status [1==allocated, 0==free],
+     * - Size includes the whole block size in bytes, it is a power of 2, bigger than 1.
+     * - The last bit of size indicates allocation status [1==allocated, 0==free],
      *   last bit is always unused for power of two integers, that are not equal to 1,
      *   and since we have a minimum of 16 bytes block, the last three bits are always unused.
      *
@@ -53,7 +56,7 @@ namespace micro_alloc {
      *
      * @author Tomer Riko Shalev
      */
-    template<typename uintptr_type=unsigned long>
+    template<typename uintptr_type=micro_alloc::uintptr_type>
     class dynamic_memory : public memory_resource<uintptr_type> {
     private:
         using base = memory_resource<uintptr_type>;

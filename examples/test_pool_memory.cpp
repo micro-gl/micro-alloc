@@ -4,7 +4,7 @@
 
 using namespace micro_alloc;
 
-void test_pool_memory() {
+void test_1() {
     using byte= unsigned char;
     const int size = 1024;
     byte memory[size];
@@ -29,5 +29,5 @@ void test_pool_memory() {
 }
 
 int main() {
-    test_pool_memory();
+    test_1();
 }

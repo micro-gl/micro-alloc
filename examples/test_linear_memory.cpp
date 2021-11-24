@@ -4,7 +4,7 @@
 
 using namespace micro_alloc;
 
-void test_linear_memory() {
+void test_1() {
     using byte= unsigned char;
     const int size = 1024;
     byte memory[size];
@@ -36,5 +36,5 @@ void test_linear_memory() {
 }
 
 int main() {
-    test_linear_memory();
+    test_1();
 }

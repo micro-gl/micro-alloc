@@ -4,7 +4,7 @@
 
 using namespace micro_alloc;
 
-void test_stack_memory() {
+void test_1() {
     using byte= unsigned char;
     const int size = 5000;
     byte memory[size];
@@ -36,5 +36,5 @@ void test_stack_memory() {
 }
 
 int main() {
-    test_stack_memory();
+    test_1();
 }

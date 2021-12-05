@@ -23,12 +23,13 @@ void test_1() {
     alloc.free(a2);
     alloc.free(a1);
     alloc.free(a1);
-        void * a41 = alloc.malloc(200);
-        void * a51 = alloc.malloc(200);
-        void * a61 = alloc.malloc(200);
-        alloc.free(a41);
-        alloc.free(a51);
-        alloc.free(a61);
+
+    void * a41 = alloc.malloc(200);
+    void * a51 = alloc.malloc(200);
+    void * a61 = alloc.malloc(200);
+    alloc.free(a41);
+    alloc.free(a51);
+    alloc.free(a61);
     //    alloc.free(a3);
     //    alloc.free(a3);
     //    alloc.free(a3);

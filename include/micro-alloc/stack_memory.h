@@ -35,6 +35,9 @@ namespace micro_alloc {
      * - Minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
      * - Blocks print is user_space = block_size - size_of_aligned_footer
      *
+     * Block is:
+     *  [..aligned data.. | distance to prev block end]
+     *
      * @tparam uintptr_type unsigned integer type that can hold a pointer
      * @tparam alignment alignment requirement, must be valid power of 2, that can satisfy
      *         the highest alignment requirement that you wish to store in the memory dynamic_memory.
@@ -50,6 +53,7 @@ namespace micro_alloc {
         using base = memory_resource<uintptr_type>;
         using typename base::uptr;
         using typename base::uint;
+        using base::align_of_uptr;
         using base::align_up;
         using base::align_down;
         using base::is_aligned;
@@ -59,26 +63,19 @@ namespace micro_alloc {
         template<typename T>
         static T int_to(uptr integer) { return reinterpret_cast<T>(integer); }
 
-        struct footer_t {
-            uptr size = 0;
-        };
+        struct footer_t { uptr distance_to_prev_block_end = 0; /* distance to last block end */ };
+        static constexpr uptr alignment_of_footer() { return align_of_uptr(); }
+//        uptr alignment_of_footer() const { return align_up(sizeof(footer_t)); }
+
 
         void *_ptr = nullptr;
-        uptr _current_head = 0;
+        uptr _current_block_end = 0;
         uint _size = 0;
 
-        uptr aligned_size_of_footer() const {
-            return align_up(sizeof(footer_t));
-        }
 
     public:
-        uptr start_aligned_address() const {
-            return align_up(ptr_to_int(_ptr));
-        }
-
-        uptr end_aligned_address() const {
-            return align_down(ptr_to_int(_ptr) + _size);
-        }
+        uptr start_aligned_address() const { return align_up(ptr_to_int(_ptr)); }
+        uptr end_aligned_address() const { return align_down(ptr_to_int(_ptr) + _size); }
 
         stack_memory() = delete;
 
@@ -90,17 +87,17 @@ namespace micro_alloc {
          */
         stack_memory(void *ptr, uint size_bytes, uptr alignment = sizeof(uintptr_type)) :
                 base{4, alignment}, _ptr(ptr), _size(size_bytes) {
-            const bool is_memory_valid_1 = aligned_size_of_footer() <= size_bytes;
+            const bool is_memory_valid_1 = alignment_of_footer() <= size_bytes;
             const bool is_memory_valid_2 = sizeof(void *) == sizeof(uintptr_type);
             const bool is_memory_valid_3 = alignment % sizeof(uintptr_type) == 0;
             const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2 and is_memory_valid_3;
-            if (is_memory_valid) _current_head = align_up(ptr_to_int(_ptr));
+            if (is_memory_valid) _current_block_end = align_up(ptr_to_int(_ptr));
             this->_is_valid = is_memory_valid;
 
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << std::endl << "HELLO:: stack memory resource" << std::endl;
             std::cout << "* minimal block size due to headers and alignment is "
-                      << aligned_size_of_footer() << " bytes" << std::endl;
+                      << alignment_of_footer() << " bytes" << std::endl;
             std::cout << "* requested alignment is " << this->alignment << " bytes" << std::endl;
             if (!is_memory_valid_1)
                 std::cout << "* memory does not satisfy minimal size requirements !!!"
@@ -120,45 +117,47 @@ namespace micro_alloc {
         }
 
         uptr available_size() const override {
-            const uptr min = align_up(_current_head);
+            const uptr min = align_up(_current_block_end);
             const uptr max = end_aligned_address();
             const uptr delta = max - min;
             return delta;
         }
 
         void *malloc(uptr size_bytes) override {
-            size_bytes = align_up(size_bytes);
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "MALLOC:: stack allocator"
-                      << std::endl << "- requested " << size_bytes << "bytes (aligned up)"
-                      << std::endl;
+            std::cout << "\nMALLOC:: stack allocator\n- requested " << size_bytes << "bytes\n";
 #endif
-            if (size_bytes == 0)
-                return nullptr;
+            if (size_bytes == 0) return nullptr;
 
-            size_bytes = align_up(size_bytes) + aligned_size_of_footer();
+            const uptr prev_block_end = _current_block_end;
+            const uptr new_block_start = align_up(prev_block_end);
+            const uptr aligned_size_bytes = align_up(size_bytes);
+            const uptr start_of_footer = new_block_start + align_up(aligned_size_bytes, alignment_of_footer());
+            const uptr new_block_end = start_of_footer + sizeof(footer_t);
+            // distance in bytes from end of new block to end of last block
+            const uptr distance_to_prev_block_end = new_block_end - prev_block_end;
 
-            bool has_space = size_bytes <= available_size();
+            bool has_space = distance_to_prev_block_end <= available_size();
             if (!has_space) {
 #ifdef MICRO_ALLOC_DEBUG
                 std::cout << "- no free space available " << available_size() << std::endl;
+                std::cout << "- tried to allocate " << distance_to_prev_block_end << "bytes\n";
 #endif
                 return nullptr;
             }
-            uptr block_start = _current_head;
 
-            _current_head += size_bytes;
-            footer_t *footer = int_to<footer_t *>(_current_head - aligned_size_of_footer());
-            footer->size = size_bytes;
+            _current_block_end += distance_to_prev_block_end;
+            footer_t *footer = int_to<footer_t *>(start_of_footer);
+            footer->distance_to_prev_block_end = distance_to_prev_block_end;
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << "- handed a free block @"
-                      << block_start << std::endl;
+            std::cout << "- handed a free block @" << new_block_start << std::endl;
+            std::cout << "- allocated " << distance_to_prev_block_end << "bytes\n";
 #endif
 
 #ifdef MICRO_ALLOC_DEBUG
             print(true);
 #endif
-            return int_to<void *>(block_start);
+            return int_to<void *>(new_block_start);
         }
 
         bool free(void *pointer) override {
@@ -168,7 +167,7 @@ namespace micro_alloc {
             std::cout << std::endl << "FREE:: stack allocator " << std::endl
                       << "- free a block address @ " << address << std::endl;
 #endif
-            const bool is_empty = _current_head == start_aligned_address();
+            const bool is_empty = _current_block_end == start_aligned_address();
             if (is_empty) {
 #ifdef MICRO_ALLOC_DEBUG
                 std::cout << "- error: nothing was allocated, nothing to free"
@@ -177,8 +176,12 @@ namespace micro_alloc {
                 return false;
             }
 
-            footer_t *footer = int_to<footer_t *>(_current_head - aligned_size_of_footer());
-            bool is_lifo = address == (_current_head - footer->size);
+            const uptr current_block_end = _current_block_end;
+            const uptr current_footer_start = current_block_end - sizeof(footer_t);
+            footer_t *footer = int_to<footer_t *>(current_footer_start);
+            const uptr last_block_end = current_block_end - footer->distance_to_prev_block_end;
+            const uptr current_block_start = align_up(last_block_end);
+            bool is_lifo = address == current_block_start;
 
             if (!is_lifo) {
 #ifdef MICRO_ALLOC_DEBUG
@@ -188,7 +191,7 @@ namespace micro_alloc {
                 return false;
             }
 
-            _current_head -= footer->size;
+            _current_block_end -= footer->distance_to_prev_block_end;
 #ifdef MICRO_ALLOC_DEBUG
             print(true);
 #endif
@@ -201,13 +204,13 @@ namespace micro_alloc {
                 std::cout << std::endl << "PRINT:: stack allocator " << std::endl;
             std::cout << "- blocks (LIFO order) [";
             uptr root = align_up(ptr_to_int(_ptr));
-            uptr head = _current_head;
+            uptr head = _current_block_end;
             bool is_last = true;
             while (head > root) {
-                footer_t *footer = int_to<footer_t *>(head - aligned_size_of_footer());
-                head -= footer->size;
+                footer_t *footer = int_to<footer_t *>(head - sizeof (footer_t));
+                head -= footer->distance_to_prev_block_end;
                 bool is_first = head <= root;
-                std::cout << (!is_last ? "<-" : "") << footer->size - aligned_size_of_footer()
+                std::cout << (!is_last ? "<-" : "") << footer->distance_to_prev_block_end
                           << (is_first ? "(ROOT)" : "");
                 if (is_last) is_last = false;
             }

@@ -30,7 +30,15 @@ namespace micro_alloc {
 
         uptr alignment;
 
+        inline static constexpr uptr align_of_uptr() {
+            return sizeof(uptr);
+        }
+
         inline uptr align_up(const uptr address) const {
+            return align_up(address, alignment);
+        }
+
+        static inline uptr align_up(const uptr address, const uptr alignment) {
             uptr align_m_1 = alignment - 1;
             uptr b = ~align_m_1;
             uptr a = (address + align_m_1);
@@ -41,9 +49,12 @@ namespace micro_alloc {
         inline
         uptr is_aligned(const uptr address) const { return align_down(address) == address; }
 
-        inline uptr align_down(const uptr address) const {
+        inline static uptr align_down(const uptr address, const uptr alignment) {
             uptr a = ~(alignment - 1);
             return (address & a);
+        }
+        inline uptr align_down(const uptr address) const {
+            return align_down(address, alignment);
         }
 
         static uptr ptr_to_int(const void *pointer) { return reinterpret_cast<uptr>(pointer); }

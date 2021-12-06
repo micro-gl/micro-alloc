@@ -1,4 +1,5 @@
 #define MICRO_ALLOC_DEBUG
+#define MICRO_ALLOC_ENABLE_THROW
 
 #include <micro-alloc/dynamic_memory.h>
 

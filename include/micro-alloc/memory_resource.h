@@ -12,6 +12,10 @@
 
 #include "utils.h"
 
+#ifdef MICRO_ALLOC_ENABLE_THROW
+#include <stdexcept>
+#endif
+
 namespace micro_alloc {
 
 /**
@@ -25,32 +29,39 @@ namespace micro_alloc {
     protected:
         bool _is_valid;
     public:
-        using uint = unsigned int;
         using uptr = uintptr_type;
 
         uptr alignment;
 
-        inline uptr align_up(const uptr address) const {
+        inline static constexpr uptr align_of_uptr() { return sizeof(uptr); }
+        inline static uptr max(const uptr a, const uptr b) { return a>b?a:b; }
+        inline static uptr min(const uptr a, const uptr b) { return a<b?a:b; }
+        inline static uptr is_pow_2(const uptr v) { return v && !(v & (v - 1)); }
+        inline uptr is_alignment_pow_2() const { return is_pow_2(alignment); }
+        inline static constexpr uptr is_pointer_expressible_as_uptr() { return sizeof(void *) == sizeof(uintptr_type); }
+        inline uptr align_up(const uptr address) const { return align_up(address, alignment); }
+        inline uptr align_down(const uptr address) const { return align_down(address, alignment); }
+        static inline uptr align_up(const uptr address, const uptr alignment) {
             uptr align_m_1 = alignment - 1;
             uptr b = ~align_m_1;
             uptr a = (address + align_m_1);
             uptr c = a & b;
             return c;
         }
-
-        inline
-        uptr is_aligned(const uptr address) const { return align_down(address) == address; }
-
-        inline uptr align_down(const uptr address) const {
+        inline uptr is_aligned(const uptr address) const { return align_down(address) == address; }
+        inline static uptr align_down(const uptr address, const uptr alignment) {
             uptr a = ~(alignment - 1);
             return (address & a);
         }
-
         static uptr ptr_to_int(const void *pointer) { return reinterpret_cast<uptr>(pointer); }
         static void *int_to_ptr(uptr integer) { return reinterpret_cast<void *>(integer); }
-        template<typename T>
-        static T int_to(uptr integer) { return reinterpret_cast<T>(integer); }
+        template<typename T> static T int_to(uptr integer) { return reinterpret_cast<T>(integer); }
         char type_id() const { return _type_id; }
+        void try_throw() {
+#ifdef MICRO_ALLOC_ENABLE_THROW
+            throw std::exception();
+#endif
+        }
 
     public:
         /**
@@ -59,7 +70,8 @@ namespace micro_alloc {
          * @param alignment alignment requirement, needs to be a power of 2 that is divisible by sizeof(uintptr_type)
          */
         explicit memory_resource(char type_id = -1, uptr alignment = sizeof(uintptr_type)) :
-                _type_id{type_id}, alignment{alignment}, _is_valid(true) {}
+                _type_id{type_id}, alignment{alignment}, _is_valid(true) {
+        }
 
         virtual ~memory_resource() = default;
 

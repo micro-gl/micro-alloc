@@ -33,7 +33,7 @@ namespace micro_alloc {
 
         template<class U, class... Args>
         void construct(U *p, Args &&... args) {
-            new(p) U(micro_alloc::traits::forward<Args>(args)...);
+            ::new(p) U(micro_alloc::traits::forward<Args>(args)...);
         }
 
         T *allocate(size_t n) { return (T *) operator new(n * sizeof(T)); }

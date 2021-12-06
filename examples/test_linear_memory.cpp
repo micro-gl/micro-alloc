@@ -1,4 +1,5 @@
 #define MICRO_ALLOC_DEBUG
+#define MICRO_ALLOC_ENABLE_THROW
 
 #include <micro-alloc/linear_memory.h>
 
@@ -29,9 +30,9 @@ void test_1() {
 
     //    alloc.free(p1);
     //    alloc.free(p1);
-    linear_memory<> alloc2{memory, size};
-
-    bool test_equal = alloc.is_equal(alloc2);
+//    linear_memory<> alloc2{memory, size};
+//
+//    bool test_equal = alloc.is_equal(alloc2);
 
 }
 

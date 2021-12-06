@@ -1,4 +1,5 @@
 #define MICRO_ALLOC_DEBUG
+#define MICRO_ALLOC_ENABLE_THROW
 
 #include <micro-alloc/pool_memory.h>
 
@@ -9,7 +10,7 @@ void test_1() {
     const int size = 1024;
     byte memory[size];
 
-    pool_memory<> alloc{memory, size, 256, 8, true};
+    pool_memory<> alloc{memory, size, 32, 4, true};
 
     void  * p1 = alloc.malloc();
     void  * p2 = alloc.malloc();

@@ -43,27 +43,25 @@ namespace micro_alloc {
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << std::endl << "HELLO:: standard memory resource" << std::endl;
             std::cout << "* requested alignment is " << alignment << " bytes" << std::endl;
+            std::cout << "* BUT, alignment does not matter, because we proxy to operator new" << std::endl;
 #endif
         }
 
-        uptr available_size() const override {
-            return ~uptr(0);
-        }
+        uptr available_size() const override { return ~uptr(0); }
 
         void *malloc(uptr size_bytes) override {
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "MALLOC:: standard memory" << std::endl
-                      << "- request a block of size " << size_bytes
-                      << std::endl;
+            std::cout << "\nMALLOC:: standard memory\n"
+                      << "- request a block of size " << size_bytes << std::endl;
 #endif
-            return operator new(size_bytes);
+            return ::operator new(size_bytes);
         }
 
         bool free(void *pointer) override {
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "FREE:: standard memory " << std::endl;
+            std::cout << "\nFREE:: standard memory \n";
 #endif
-            operator delete(pointer);
+            ::operator delete(pointer);
             return true;
         }
 

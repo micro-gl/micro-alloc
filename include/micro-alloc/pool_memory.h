@@ -45,6 +45,7 @@ namespace micro_alloc {
         using base::int_to_ptr;
         using base::align_of_uptr;
         using base::max;
+        using base::is_pointer_expressible_as_uptr;
         using base::is_alignment_pow_2;
         using base::try_throw;
 
@@ -103,7 +104,7 @@ namespace micro_alloc {
                 base(3, max(requested_alignment, sizeof(uptr))), _ptr(ptr), _size(size_bytes), _block_size(0),
                 _guard_against_double_free(guard_against_double_free) {
             const bool is_memory_valid_1 = correct_block_size(block_size) <= size_bytes;
-            const bool is_memory_valid_2 = sizeof(void *) == sizeof(uintptr_type);
+            const bool is_memory_valid_2 = is_pointer_expressible_as_uptr();
             const bool is_memory_valid_3 = is_alignment_pow_2();
             const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2 and is_memory_valid_3;
             if (is_memory_valid) reset(block_size);

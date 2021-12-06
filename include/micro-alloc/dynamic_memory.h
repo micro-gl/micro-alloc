@@ -61,13 +61,16 @@ namespace micro_alloc {
     private:
         using base = memory_resource<uintptr_type>;
         using typename base::uptr;
-        using typename base::uint;
         using base::align_up;
         using base::align_down;
         using base::is_aligned;
         using base::ptr_to_int;
         using base::int_to_ptr;
         using base::int_to;
+        using base::is_alignment_pow_2;
+        using base::is_pointer_expressible_as_uptr;
+        using base::try_throw;
+        using base::max;
 
         void *_ptr;
         uint _size;
@@ -83,9 +86,7 @@ namespace micro_alloc {
             bool is_allocated() const { return size_and_status & 1; }
             bool toggle_allocated() { return size_and_status ^= (uptr(1)); }
         };
-
         using footer_t = base_header_t;
-
         struct header_t {
             base_header_t base;
             // following fields are for free block
@@ -214,14 +215,8 @@ namespace micro_alloc {
             const uptr max = end_aligned_address() - start_aligned_address();
             return max - _allocations;
         }
-
-        uptr start_aligned_address() const {
-            return align_up(this->ptr_to_int(_ptr));
-        }
-
-        uptr end_aligned_address() const {
-            return align_down(this->ptr_to_int(_ptr) + _size);
-        }
+        uptr start_aligned_address() const { return align_up(this->ptr_to_int(_ptr)); }
+        uptr end_aligned_address() const { return align_down(this->ptr_to_int(_ptr) + _size); }
 
         dynamic_memory() = delete;
 
@@ -230,38 +225,36 @@ namespace micro_alloc {
          *
          * @param ptr pointer of starting pool
          * @param size_bytes amount of bytes
-         * @param alignment alignment has to be a power of 2 that is divisible sizeof(uintptr_type)
+         * @param alignment alignment has to be a power of 2
          */
         dynamic_memory(void *ptr, unsigned int size_bytes, uptr alignment = sizeof(uintptr_type)) :
-                base{2, alignment}, _ptr(ptr), _size(size_bytes) {
+                base(2, max(alignment, sizeof(uptr))), _ptr(ptr), _free_list_root(nullptr),
+                                                _allocations(0), _size(size_bytes) {
             const auto block = create_free_block(this->ptr_to_int(ptr), this->ptr_to_int(ptr) + size_bytes);
             const bool is_memory_valid_1 = block.size() >= minimal_size_of_any_block();
-            const bool is_memory_valid_2 = sizeof(void *) == sizeof(uintptr_type);
-            const bool is_memory_valid_3 = alignment % sizeof(uintptr_type) == 0;
+            const bool is_memory_valid_2 = is_pointer_expressible_as_uptr();
+            const bool is_memory_valid_3 = is_alignment_pow_2();
             const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2 and is_memory_valid_3;
 
-            if (is_memory_valid) _free_list_root = block.header();
-            this->_is_valid = is_memory_valid;
-
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "HELLO:: dynamic memory resource" << std::endl;
+            std::cout << "\nHELLO:: dynamic memory resource\n";
+            std::cout << "* requested alignment is " << alignment << " bytes" << std::endl;
+            std::cout << "* final alignment is " << this->alignment << " bytes" << std::endl;
             std::cout << "* minimal block size due to headers, footers and alignment is "
                       << minimal_size_of_any_block() << " bytes" << std::endl;
-            std::cout << "* requested alignment is " << this->alignment << " bytes" << std::endl;
-            std::cout << "* principal memory block after alignment is " << block.size() << " bytes"
-                      << std::endl;
+            std::cout << "* principal memory block after alignment is " << block.size() << " bytes\n";
 
             if (!is_memory_valid_1)
-                std::cout << "* error:: memory does not satisfy minimal size requirements !!!"
-                          << std::endl;
+                std::cout << "* error:: memory does not satisfy minimal size requirements !!!\n";
             if (!is_memory_valid_2)
-                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!"
-                          << std::endl;
+                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!\n";
             if (!is_memory_valid_3)
-                std::cout << "* error:: alignment should be a power of 2 divisible by sizeof(uintptr_type)="
-                          << sizeof(uintptr_type) << " !!!" << std::endl;
+                std::cout << "* error:: final alignment should be a power of 2\n";
             print(false);
 #endif
+            if (is_memory_valid) _free_list_root = block.header();
+            else try_throw();
+            this->_is_valid = is_memory_valid;
         }
 
         ~dynamic_memory() override {
@@ -274,8 +267,7 @@ namespace micro_alloc {
         void *malloc(uptr size_bytes) override {
             size_bytes = align_up(size_bytes);
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "MALLOC:: dynamic allocator " << std::endl
-                      << "- requested block size is " << size_bytes
+            std::cout << "\nMALLOC:: dynamic allocator \n- requested block size is " << size_bytes
                       << " bytes (aligned up)" << std::endl;
 #endif
             auto *current_node = _free_list_root;
@@ -284,8 +276,7 @@ namespace micro_alloc {
             std::cout << "- search :: searching for max(" << size_bytes +
                                                              aligned_base_header_and_footer()
                       << ", " << minimal_size_of_any_block() << ") bytes block due to align, "
-                                                                "base header and footer"
-                      << std::endl;
+                                                                "base header and footer\n";
 #endif
             while (current_node) {
                 bool flag_size_fits = size_bytes <= effective_payload_size_of_block(current_node);
@@ -302,6 +293,7 @@ namespace micro_alloc {
 #ifdef MICRO_ALLOC_DEBUG
                 std::cout << "- search failure:: no block was found" << std::endl;
 #endif
+                try_throw();
                 return nullptr;
             } else {
 #ifdef MICRO_ALLOC_DEBUG
@@ -314,14 +306,12 @@ namespace micro_alloc {
                                                                             size_bytes);
 
             // remove resolved_header from linked list
-            bool is_resolved_block_first = resolved_header->prev == nullptr;
-            bool is_resolved_block_last = resolved_header->next == nullptr;
-            if (!is_resolved_block_first)
-                resolved_header->prev->next = resolved_header->next;
-            if (!is_resolved_block_last)
-                resolved_header->next->prev = resolved_header->prev;
-            if (is_resolved_block_first)
-                _free_list_root = resolved_header->next;
+            const bool is_resolved_block_first = resolved_header->prev == nullptr;
+            const bool is_resolved_block_last = resolved_header->next == nullptr;
+
+            if (!is_resolved_block_first) resolved_header->prev->next = resolved_header->next;
+            if (!is_resolved_block_last) resolved_header->next->prev = resolved_header->prev;
+            if (is_resolved_block_first) _free_list_root = resolved_header->next;
             // this is really optional, since this space will become part of the payload
             resolved_header->prev = resolved_header->next = nullptr;
             get_block(ptr_to_int(resolved_header)).toggle_allocated();
@@ -343,13 +333,13 @@ namespace micro_alloc {
             auto address = this->ptr_to_int(pointer);
 
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "FREE:: dynamic allocator" << std::endl
-                      << "- address @ " << address << std::endl;
+            std::cout << std::endl << "FREE:: dynamic allocator\n- address @ " << address << "\n";
 #endif
             if (!is_aligned(address)) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- error: address is misaligned to " << this->alignment << " bytes" << std::endl;
+                std::cout << "- error: address is misaligned to " << this->alignment << " bytes\n";
 #endif
+                try_throw();
                 return false;
             }
 
@@ -359,19 +349,20 @@ namespace micro_alloc {
             const bool sanity_check = block.sanity_test();
             if (!sanity_check) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- failed sanity check, this is probably not a block address" << std::endl;
+                std::cout << "- failed sanity check, this is probably not a block address\n";
 #endif
+                try_throw();
                 return false;
             }
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << "- found block: size " << block.size() << " @" << block.aligned_from << std::endl;
-            std::cout << "               allocation stat is ";
-            std::cout << (block.is_allocated() ? "allocated" : "free") << std::endl;
+            std::cout << "               allocation stat is " << (block.is_allocated() ? "allocated\n" : "free\n");
 #endif
             if (!block.is_allocated()) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- error block is marked as Free !!!" << std::endl;
+                std::cout << "- error: block is marked as Free !!!\n";
 #endif
+                try_throw();
                 return false;
             }
             // mark it as free, while this might seem redundant as we create a new free block later,
@@ -395,8 +386,7 @@ namespace micro_alloc {
                 auto is_allocated = left_block.is_allocated();
 #ifdef MICRO_ALLOC_DEBUG
                 std::cout << "- found left block: size " << left_block.size();
-                std::cout << ", allocation status is " << (is_allocated ? "Allocated, skipping" : "Free");
-                std::cout << std::endl;
+                std::cout << ", allocation status is " << (is_allocated ? "Allocated, skipping\n" : "Free\n");
 #endif
                 if (!is_allocated) { // left block is free, let's remove from list
                     bool is_resolved_block_first = left_block.header()->prev == nullptr;
@@ -419,8 +409,7 @@ namespace micro_alloc {
                 auto is_allocated = right_block.is_allocated();
 #ifdef MICRO_ALLOC_DEBUG
                 std::cout << "- found right block: size " << right_block.size()
-                          << ", allocation status is " << (is_allocated ? "Allocated, skipping" : "Free")
-                          << std::endl;
+                          << ", allocation status is " << (is_allocated ? "Allocated, skipping\n" : "Free\n");
 #endif
                 if (!is_allocated) { // right block is free, let's remove from list
                     bool is_resolved_block_first = right_block.header()->prev == nullptr;
@@ -444,11 +433,11 @@ namespace micro_alloc {
 
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << "- new free block: size " << new_block.size() << ", spans addresses ["
-                      << new_block.aligned_from << "-" << new_block.aligned_to << "]" << std::endl;
+                      << new_block.aligned_from << "-" << new_block.aligned_to << "]\n";
 #endif
             if (is_free_list_empty) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- free list was empty, assigned the block" << std::endl;
+                std::cout << "- free list was empty, assigned the block\n";
 #endif
                 _free_list_root = new_block.header();
             }
@@ -461,7 +450,7 @@ namespace micro_alloc {
                     left_hint_node->next->prev = new_block.header();
                 left_hint_node->next = new_block.header();
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- used left hint node" << std::endl;
+                std::cout << "- used left hint node\n";
 #endif
             } else if (right_hint_node) { // insert to the left of hint
                 new_block.header()->next = right_hint_node;
@@ -474,11 +463,11 @@ namespace micro_alloc {
                 if (_free_list_root == right_hint_node)
                     _free_list_root = new_block.header();
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- used right hint node" << std::endl;
+                std::cout << "- used right hint node\n";
 #endif
             } else { // search the entire free list in ascending address order
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- searching the entire free list, ascending order" << std::endl;
+                std::cout << "- searching the entire free list, ascending order\n";
 #endif
                 auto *current_node = _free_list_root;
                 auto *current_node_before = current_node;
@@ -488,7 +477,7 @@ namespace micro_alloc {
                 }
                 if (current_node == nullptr) { // we reached the end, make it last node
 #ifdef MICRO_ALLOC_DEBUG
-                    std::cout << "- block was inserted last" << std::endl;
+                    std::cout << "- block was inserted last\n";
 #endif
                     current_node_before->next = new_block.header();
                     new_block.header()->prev = current_node_before;
@@ -500,7 +489,7 @@ namespace micro_alloc {
                         current_node->prev->next = new_block.header();
                     else {
 #ifdef MICRO_ALLOC_DEBUG
-                        std::cout << "- block was inserted first" << std::endl;
+                        std::cout << "- block was inserted first\n";
 #endif
                         _free_list_root = new_block.header();
                     }

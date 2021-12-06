@@ -52,25 +52,26 @@ namespace micro_alloc {
     private:
         using base = memory_resource<uintptr_type>;
         using typename base::uptr;
-        using typename base::uint;
         using base::align_of_uptr;
         using base::align_up;
         using base::align_down;
         using base::is_aligned;
         using base::ptr_to_int;
         using base::int_to_ptr;
+        using base::int_to;
+        using base::is_alignment_pow_2;
+        using base::is_pointer_expressible_as_uptr;
+        using base::try_throw;
 
         template<typename T>
         static T int_to(uptr integer) { return reinterpret_cast<T>(integer); }
 
         struct footer_t { uptr distance_to_prev_block_end = 0; /* distance to last block end */ };
         static constexpr uptr alignment_of_footer() { return align_of_uptr(); }
-//        uptr alignment_of_footer() const { return align_up(sizeof(footer_t)); }
 
-
-        void *_ptr = nullptr;
-        uptr _current_block_end = 0;
-        uint _size = 0;
+        void *_ptr ;
+        uptr _current_block_end;
+        uptr _size;
 
 
     public:
@@ -80,40 +81,36 @@ namespace micro_alloc {
         stack_memory() = delete;
 
         /**
-         * ctor
-         *
          * @param ptr start of memory
          * @param size_bytes the memory size in bytes
+         * @param alignment power of 2 alignment
          */
-        stack_memory(void *ptr, uint size_bytes, uptr alignment = sizeof(uintptr_type)) :
-                base{4, alignment}, _ptr(ptr), _size(size_bytes) {
+        stack_memory(void *ptr, uptr size_bytes, uptr alignment = sizeof(uintptr_type)) :
+                base{4, alignment}, _ptr(ptr), _size(size_bytes), _current_block_end(0) {
             const bool is_memory_valid_1 = alignment_of_footer() <= size_bytes;
-            const bool is_memory_valid_2 = sizeof(void *) == sizeof(uintptr_type);
-            const bool is_memory_valid_3 = alignment % sizeof(uintptr_type) == 0;
+            const bool is_memory_valid_2 = is_pointer_expressible_as_uptr();
+            const bool is_memory_valid_3 = is_alignment_pow_2();
             const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2 and is_memory_valid_3;
             if (is_memory_valid) _current_block_end = align_up(ptr_to_int(_ptr));
             this->_is_valid = is_memory_valid;
 
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "HELLO:: stack memory resource" << std::endl;
-            std::cout << "* minimal block size due to headers and alignment is "
-                      << alignment_of_footer() << " bytes" << std::endl;
-            std::cout << "* requested alignment is " << this->alignment << " bytes" << std::endl;
+            std::cout << "\nHELLO:: stack memory resource\n";
+            std::cout << "* requested alignment is " << alignment << " bytes" << std::endl;
+            std::cout << "* final alignment is " << this->alignment << " bytes" << std::endl;
+            std::cout << "* minimal block size due to headers and alignment is " << alignment_of_footer() << " bytes\n";
             if (!is_memory_valid_1)
-                std::cout << "* memory does not satisfy minimal size requirements !!!"
-                          << std::endl;
+                std::cout << "* error:: memory does not satisfy minimal size requirements !!!\n";
             if (!is_memory_valid_2)
-                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!"
-                          << std::endl;
+                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!\n";
             if (!is_memory_valid_3)
-                std::cout << "* error:: alignment should be a power of 2 divisible by sizeof(uintptr_type)="
-                          << sizeof(uintptr_type) << " !!!" << std::endl;
+                std::cout << "* error:: final alignment should be a power of 2\n";
 #endif
+            if(!is_memory_valid) try_throw();
         }
 
         ~stack_memory() override {
-            _ptr = nullptr;
-            _size = 0;
+            _ptr = nullptr; _current_block_end = _size = 0;
         }
 
         uptr available_size() const override {
@@ -123,9 +120,9 @@ namespace micro_alloc {
             return delta;
         }
 
-        void *malloc(uptr size_bytes) override {
+        void * malloc(uptr size_bytes) override {
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << "\nMALLOC:: stack allocator\n- requested " << size_bytes << "bytes\n";
+            std::cout << "\nMALLOC:: stack memory\n- requested " << size_bytes << "bytes\n";
 #endif
             if (size_bytes == 0) return nullptr;
 
@@ -143,6 +140,7 @@ namespace micro_alloc {
                 std::cout << "- no free space available " << available_size() << std::endl;
                 std::cout << "- tried to allocate " << distance_to_prev_block_end << "bytes\n";
 #endif
+                try_throw();
                 return nullptr;
             }
 
@@ -152,9 +150,6 @@ namespace micro_alloc {
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << "- handed a free block @" << new_block_start << std::endl;
             std::cout << "- allocated " << distance_to_prev_block_end << "bytes\n";
-#endif
-
-#ifdef MICRO_ALLOC_DEBUG
             print(true);
 #endif
             return int_to<void *>(new_block_start);
@@ -164,15 +159,14 @@ namespace micro_alloc {
             auto address = ptr_to_int(pointer);
 
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "FREE:: stack allocator " << std::endl
-                      << "- free a block address @ " << address << std::endl;
+            std::cout << "\nFREE:: stack allocator\n- free a block address @ " << address << "\n";
 #endif
             const bool is_empty = _current_block_end == start_aligned_address();
             if (is_empty) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- error: nothing was allocated, nothing to free"
-                          << std::endl;
+                std::cout << "- error: nothing was allocated, nothing to free\n";
 #endif
+                try_throw();
                 return false;
             }
 
@@ -188,6 +182,7 @@ namespace micro_alloc {
                 std::cout << "- error: proposed free block is not the latest allocated, "
                              "and thus violating the LIFO property !!!" << std::endl;
 #endif
+                try_throw();
                 return false;
             }
 
@@ -225,6 +220,5 @@ namespace micro_alloc {
             equals = this->_ptr == casted_other->_ptr;
             return equals;
         }
-
     };
 }

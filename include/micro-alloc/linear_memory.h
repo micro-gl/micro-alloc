@@ -12,8 +12,6 @@
 
 #include "memory_resource.h"
 
-//#define MICRO_ALLOC_DEBUG
-
 #ifdef MICRO_ALLOC_DEBUG
 #include <iostream>
 #endif
@@ -43,17 +41,19 @@ namespace micro_alloc {
     private:
         using base = memory_resource<uintptr_type>;
         using typename base::uptr;
-        using typename base::uint;
         using base::align_up;
         using base::align_down;
         using base::is_aligned;
         using base::ptr_to_int;
         using base::int_to_ptr;
         using base::int_to;
+        using base::try_throw;
+        using base::is_alignment_pow_2;
+        using base::is_pointer_expressible_as_uptr;
 
         void *_ptr;
-        void *_current_ptr = nullptr;
-        uint _size = 0;
+        void *_current_ptr;
+        uint _size;
 
     public:
 
@@ -63,30 +63,24 @@ namespace micro_alloc {
          *
          * @param ptr start of memory
          * @param size_bytes the memory size in bytes
-         * @param block_size the block size
-         * @param guard_against_double_free if {True}, user will not be able to accidentally
-         *          free an already free block at the cost of having free operation at O(free-list-size).
-         *          If {False}, free will take O(1) operations like allocations.
+         * @param alignment power of 2 alignment
          */
-        linear_memory(void *ptr, uint size_bytes, uptr alignment = sizeof(uintptr_type)) :
-                base{1, alignment}, _ptr(ptr), _size(size_bytes) {
-            const bool is_memory_valid_1 = sizeof(void *) == sizeof(uintptr_type);
-            const bool is_memory_valid_2 = alignment % sizeof(uintptr_type) == 0;
-            const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2;
-            if (is_memory_valid) reset();
+        linear_memory(void *ptr, uptr size_bytes, uptr alignment = sizeof(uintptr_type)) :
+                base{1, alignment}, _ptr(ptr), _current_ptr(nullptr), _size(size_bytes) {
+            const bool is_memory_valid = is_pointer_expressible_as_uptr() and is_alignment_pow_2();
             this->_is_valid = is_memory_valid;
 
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "HELLO:: linear memory resource" << std::endl;
+            std::cout << "\nHELLO:: linear memory resource\n";
             std::cout << "* requested alignment is " << alignment << " bytes" << std::endl;
             std::cout << "* size is " << size_bytes << " bytes" << std::endl;
-            if (!is_memory_valid_1)
-                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!"
-                          << std::endl;
-            if (!is_memory_valid_2)
-                std::cout << "* error:: alignment should be a power of 2 divisible by sizeof(uintptr_type)="
-                          << sizeof(uintptr_type) << " !!!" << std::endl;
+            if (!is_pointer_expressible_as_uptr())
+                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!\n";
+            if (!is_alignment_pow_2())
+                std::cout << "* error:: alignment should be a power of 2\n";
 #endif
+            if (is_memory_valid) reset();
+            else try_throw();
         }
 
         ~linear_memory() override {
@@ -96,11 +90,9 @@ namespace micro_alloc {
 
         void reset() {
             _current_ptr = base::template int_to<void *>(align_up(ptr_to_int(_ptr)));
-
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "RESET:: linear memory" << std::endl
-                      << "- reset memory to start @ " << ptr_to_int(_current_ptr)
-                      << " (aligned up)" << std::endl;
+            std::cout << "\nRESET:: linear memory\n- reset memory to start @ "
+                      << ptr_to_int(_current_ptr) << " (aligned up)\n";
 #endif
         }
 
@@ -109,14 +101,8 @@ namespace micro_alloc {
             const uptr delta = end_aligned_address() - min;
             return delta;
         }
-
-        uptr start_aligned_address() const {
-            return align_up(ptr_to_int(_ptr));
-        }
-
-        uptr end_aligned_address() const {
-            return align_down(ptr_to_int(_ptr) + _size);
-        }
+        uptr start_aligned_address() const { return align_up(ptr_to_int(_ptr)); }
+        uptr end_aligned_address() const { return align_down(ptr_to_int(_ptr) + _size); }
 
         void *malloc(uptr size_bytes) override {
             size_bytes = align_up(size_bytes);
@@ -125,49 +111,42 @@ namespace micro_alloc {
             const bool has_requested_size_zero = size_bytes == 0;
 
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "MALLOC:: linear allocator" << std::endl
-                      << "- request a block of size " << size_bytes << " (aligned up)"
-                      << std::endl;
+            std::cout << "\nMALLOC:: linear allocator\n"
+                      << "- request a block of size " << size_bytes << " (aligned up)\n";
 #endif
 
             if (has_requested_size_zero) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- error, cannot fulfill a size 0 bytes block !!"
-                          << std::endl;
+                std::cout << "- error, cannot fulfill a size 0 bytes block !!\n";
 #endif
+                try_throw();
                 return nullptr;
             }
 
             if (!has_available_size) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- error, could not fulfill this size"
-                          << std::endl << "- available size is " << available_space
-                          << std::endl;
+                std::cout << "- error, could not fulfill this size\n- available size is " << available_space << "\n";
 #endif
+                try_throw();
                 return nullptr;
             }
-
             auto *pointer = _current_ptr;
             _current_ptr = base::template int_to<void *>(ptr_to_int(pointer) + size_bytes);
-
             return pointer;
         }
 
         bool free(void *pointer) override {
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "FREE:: linear allocator "
-                      << std::endl << "- linear allocator does not free space, use reset() instead "
-                      << std::endl << "- available size is " << available_size()
-                      << std::endl;
+            std::cout << "\nFREE:: linear allocator \n"
+                      << "- linear allocator does not free space, use reset() instead \n"
+                      << "- available size is " << available_size() << std::endl;
 #endif
-            return true;
+            return false;
         }
 
         void print(bool embed) const override {
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "PRINT:: linear allocator "
-                      << std::endl << "- available size is " << available_size()
-                      << std::endl;
+            std::cout << "\nPRINT:: linear allocator \n- available size is " << available_size() << "\n";
 #endif
         }
 

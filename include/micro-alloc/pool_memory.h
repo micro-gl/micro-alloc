@@ -12,8 +12,6 @@
 
 #include "memory_resource.h"
 
-//#define MICRO_ALLOC_DEBUG
-
 #ifdef MICRO_ALLOC_DEBUG
 #include <iostream>
 #endif
@@ -32,11 +30,6 @@ namespace micro_alloc {
      * Minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
      *
      * @tparam uintptr_type unsigned integer type that can hold a pointer
-     * @tparam alignment alignment requirement, must be valid power of 2, that can satisfy
-     *         the highest alignment requirement that you wish to store in the memory dynamic_memory.
-     *         alignment of atomic types usually equals their size.
-     *         alignment of struct types equals the maximal alignment among it's member types.
-     *         if you have std lib, you can infer these, otherwise, just plug them if you know
      *
      * @author Tomer Riko Shalev
      */
@@ -45,40 +38,38 @@ namespace micro_alloc {
     private:
         using base = memory_resource<uintptr_type>;
         using typename base::uptr;
-        using typename base::uint;
         using base::align_up;
         using base::align_down;
         using base::is_aligned;
         using base::ptr_to_int;
         using base::int_to_ptr;
+        using base::align_of_uptr;
+        using base::max;
+        using base::is_alignment_pow_2;
+        using base::try_throw;
 
         template<typename T>
         static T int_to(uptr integer) { return reinterpret_cast<T>(integer); }
 
-        struct header_t {
-            header_t *next = nullptr;
-        };
+        struct header_t { header_t *next = nullptr; };
+        static constexpr uptr alignment_of_header() { return align_of_uptr(); }
 
         void *_ptr = nullptr;
-        uint _size = 0;
-        uint _block_size = 0;
-        uint _blocks_count = 0;
-        uint _free_blocks_count = 0;
+        uptr _size = 0;
+        uptr _block_size = 0;
+        uptr _blocks_count = 0;
+        uptr _free_blocks_count = 0;
         header_t *_free_list_root = nullptr;
         bool _guard_against_double_free = false;
 
-        uint minimal_size_of_any_block() const {
-            return align_up(sizeof(header_t));
-        }
-
-        uint correct_block_size(uint block_size) const {
+        uptr minimal_size_of_any_block() const { return align_up(sizeof(header_t)); }
+        uptr correct_block_size(uptr block_size) const {
             block_size = align_up(block_size);
             if (block_size < minimal_size_of_any_block())
                 block_size = minimal_size_of_any_block();
             return block_size;
         }
-
-        uint compute_blocks_count() {
+        uptr compute_blocks_count() {
             uptr a = align_up(ptr_to_int(_ptr));
             uptr b = align_down(ptr_to_int(_ptr) + _size);
             uptr diff = b - a;
@@ -86,25 +77,12 @@ namespace micro_alloc {
         }
 
     public:
-        uint blocks_count() {
-            return _blocks_count;
-        }
-
-        uint free_blocks_count() const {
-            return _free_blocks_count;
-        }
-
-        uptr start_aligned_address() const {
-            return align_up(ptr_to_int(_ptr));
-        }
-
-        uptr end_aligned_address() const {
-            return align_down(ptr_to_int(_ptr) + _size);
-        }
-
-        uptr available_size() const override {
-            return free_blocks_count() * _block_size;
-        }
+        uptr block_size() { return _block_size; }
+        uptr blocks_count() { return _blocks_count; }
+        uptr free_blocks_count() const { return _free_blocks_count; }
+        uptr start_aligned_address() const { return align_up(ptr_to_int(_ptr)); }
+        uptr end_aligned_address() const { return align_down(ptr_to_int(_ptr) + _size); }
+        uptr available_size() const override { return free_blocks_count() * _block_size; }
 
         pool_memory() = delete;
 
@@ -113,38 +91,40 @@ namespace micro_alloc {
          * @param ptr start of memory
          * @param size_bytes the memory size in bytes
          * @param block_size the block size
+         * @param requested_alignment alignment request, power of 2 integer. Fulfilled alignment might be
+         *                              higher than requested because of headers alignment.
          * @param guard_against_double_free if {True}, user will not be able to accidentally
          *          free an already free block at the cost of having free operation at O(free-list-size).
          *          If {False}, free will take O(1) operations like allocations.
          */
-        pool_memory(void *ptr, uint size_bytes, uint block_size,
-                    uptr alignment = sizeof(uintptr_type),
+        pool_memory(void *ptr, uptr size_bytes, uptr block_size,
+                    uptr requested_alignment = sizeof(uintptr_type),
                     bool guard_against_double_free = false) :
-                base{3, alignment}, _ptr(ptr), _size(size_bytes), _block_size(0),
+                base(3, max(requested_alignment, sizeof(uptr))), _ptr(ptr), _size(size_bytes), _block_size(0),
                 _guard_against_double_free(guard_against_double_free) {
             const bool is_memory_valid_1 = correct_block_size(block_size) <= size_bytes;
             const bool is_memory_valid_2 = sizeof(void *) == sizeof(uintptr_type);
-            const bool is_memory_valid_3 = alignment % sizeof(uintptr_type) == 0;
+            const bool is_memory_valid_3 = is_alignment_pow_2();
             const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2 and is_memory_valid_3;
             if (is_memory_valid) reset(block_size);
             this->_is_valid = is_memory_valid;
 
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "HELLO:: pool memory resource" << std::endl;
-            std::cout << "* correct block size due to headers and alignment is "
-                      << correct_block_size(block_size) << " bytes" << std::endl;
-            std::cout << "* requested alignment is " << alignment << " bytes" << std::endl;
+            std::cout << "\nHELLO:: pool memory resource\n";
+            std::cout << "* requested alignment is " << requested_alignment << " bytes\n";
+            std::cout << "* final alignment is " << this->alignment << " bytes\n";
+            std::cout << "* correct block size due to headers and final alignment is "
+                      << correct_block_size(block_size) << " bytes\n";
+            std::cout << "* number of blocks is " << _blocks_count << "\n";
             if (is_memory_valid)
                 std::cout << "* first block @ " << ptr_to_int(_free_list_root) << std::endl;
             if (!is_memory_valid_1)
-                std::cout << "* memory does not satisfy minimal size requirements !!!"
-                          << std::endl;
+                std::cout << "* memory does not satisfy minimal size requirements !!!\n";
             if (!is_memory_valid_2)
-                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!"
-                          << std::endl;
+                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!\n";
             if (!is_memory_valid_3)
-                std::cout << "* error:: alignment should be a power of 2 divisible by sizeof(uintptr_type)="
-                          << sizeof(uintptr_type) << " !!!" << std::endl;
+                std::cout << "* error:: final alignment should be a power of 2\n";
+            if(!is_memory_valid) try_throw();
             print(false);
 #endif
         }
@@ -155,13 +135,13 @@ namespace micro_alloc {
             _blocks_count = _block_size = _size = 0;
         }
 
-        void reset(const uint block_size) {
+        void reset(const uptr block_size) {
             _block_size = correct_block_size(block_size);
-            const uint blocks = _free_blocks_count = _blocks_count
+            const uptr blocks = _free_blocks_count = _blocks_count
                     = compute_blocks_count();
             void *ptr = _ptr;
             uptr current = align_up(ptr_to_int(ptr));
-            uptr next = current + block_size;
+            uptr next = current + _block_size;
             _free_list_root = int_to<header_t *>(current);
             for (int ix = 0; ix < blocks - 1; ++ix) {
                 auto *header_current = int_to<header_t *>(current);
@@ -173,16 +153,17 @@ namespace micro_alloc {
             int_to<header_t *>(current)->next = nullptr;
         }
 
-        void *malloc(uptr size_bytes_dont_matter = 0) override {
+        void *malloc() { return malloc(0); }
+        void *malloc(uptr size_bytes_dont_matter) override {
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "MALLOC:: pool memory resource"
-                      << std::endl;
+            std::cout << "\nMALLOC:: pool memory resource\n";
 #endif
 
             if (_free_list_root == nullptr) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- no free blocks are available" << std::endl;
+                std::cout << "- no free blocks are available\n";
 #endif
+                try_throw();
                 return nullptr;
             }
             auto *current_node = _free_list_root;
@@ -190,10 +171,9 @@ namespace micro_alloc {
             _free_blocks_count -= 1;
 
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << "- handed a free block @"
-                      << ptr_to_int(current_node) << std::endl;
+            std::cout << "- handed a free block @" << ptr_to_int(current_node) << "\n";
             std::cout << "- free blocks in pool [" << _free_blocks_count << "/"
-                      << _blocks_count << "]" << std::endl;
+                      << _blocks_count << "]\n";
 #endif
 
             return current_node;
@@ -206,23 +186,22 @@ namespace micro_alloc {
             const bool is_in_range = address >= min_range && address < max_range;
 
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "FREE:: pool allocator " << std::endl
-                      << "- free a block address @ " << address << std::endl;
+            std::cout << std::endl << "FREE:: pool allocator \n- free a block address @ " << address << std::endl;
 #endif
             if (!is_in_range) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- error: address is not in range [" << min_range
-                          << " -- " << max_range << std::endl;
+                std::cout << "- error: address is not in range [" << min_range << " -- " << max_range << std::endl;
 #endif
+                try_throw();
                 return false;
             }
 
             bool is_address_block_aligned = (address - min_range) % _block_size == 0;
             if (!is_address_block_aligned) {
 #ifdef MICRO_ALLOC_DEBUG
-                std::cout << "- error: address is not aligned to " << _block_size
-                          << " bytes block sizes" << std::endl;
+                std::cout << "- error: address is not aligned to " << _block_size << " bytes block sizes\n";
 #endif
+                try_throw();
                 return false;
             }
 
@@ -238,8 +217,9 @@ namespace micro_alloc {
                 }
                 if (is_freeing_an_already_free_block) {
 #ifdef MICRO_ALLOC_DEBUG
-                    std::cout << "- error: tried to free an already Free block" << std::endl;
+                    std::cout << "- error: tried to free an already Free block\n";
 #endif
+                    try_throw();
                     return false;
                 }
             }
@@ -251,17 +231,15 @@ namespace micro_alloc {
 
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << "- free blocks in pool [" << _free_blocks_count << "/"
-                      << _blocks_count << "]" << std::endl;
+                      << _blocks_count << "]\n";
 #endif
-
             return true;
         }
 
         void print(bool dummy) const override {
 #ifdef MICRO_ALLOC_DEBUG
-            std::cout << std::endl << "PRINT:: pool allocator " << std::endl;
-            std::cout << "- free list is [" << _free_blocks_count << "/" << _blocks_count << "]" << std::endl;
-            std::cout << std::endl;
+            std::cout << "\nPRINT:: pool allocator \n";
+            std::cout << "- free list is [" << _free_blocks_count << "/" << _blocks_count << "]\n\n";
 #endif
         }
 
@@ -272,6 +250,5 @@ namespace micro_alloc {
             equals = this->_ptr == casted_other->_ptr;
             return equals;
         }
-
     };
 }

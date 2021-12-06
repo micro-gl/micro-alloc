@@ -1,4 +1,5 @@
 #define MICRO_ALLOC_DEBUG
+//#define MICRO_ALLOC_ENABLE_THROW
 
 #include <micro-alloc/stack_memory.h>
 
@@ -30,6 +31,9 @@ void test_1() {
     alloc.free(a41);
     alloc.free(a51);
     alloc.free(a61);
+    alloc.free(a51);
+    alloc.free(a41);
+    alloc.free(a41);
     //    alloc.free(a3);
     //    alloc.free(a3);
     //    alloc.free(a3);

@@ -107,13 +107,10 @@ namespace micro_alloc {
         using uptr = uintptr_type;
 
     public:
+        struct out_of_memory_exception {};
         static constexpr uptr Alignment = sizeof (uptr);
-
         using storage_type = static_storage_t<uintptr_type, Alignment, SizeBytes, BANK>;
         using memory_info = typename storage_type::memory_info_t;
-
-    public:
-        struct out_of_memory_exception {};
         using value_type = T;
         using size_t = unsigned long;
 

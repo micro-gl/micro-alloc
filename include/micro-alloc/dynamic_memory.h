@@ -38,7 +38,7 @@ namespace micro_alloc {
      * Free block layout is:
      * [ size|1 | prev | next | ... padding .... | size|1 ]
      *
-     * - Size includes the whole block size in bytes, it is a power of 2, bigger than 1.
+     * - SizeBytes includes the whole block size in bytes, it is a power of 2, bigger than 1.
      * - The last bit of size indicates allocation status [1==allocated, 0==free],
      *   last bit is always unused for power of two integers, that are not equal to 1,
      *   and since we have a minimum of 16 bytes block, the last three bits are always unused.
@@ -72,9 +72,6 @@ namespace micro_alloc {
         using base::try_throw;
         using base::max;
 
-        void *_ptr;
-        uint _size;
-
         struct base_header_t {
             uptr size_and_status = 0;
 
@@ -95,6 +92,9 @@ namespace micro_alloc {
         };
 
         header_t * _free_list_root = nullptr;
+        uptr _allocations;
+        void *_ptr;
+        uint _size;
 
         struct block_t {
             uptr aligned_from = 0, aligned_to = 0;
@@ -206,8 +206,6 @@ namespace micro_alloc {
             }
             return block;
         }
-
-        uptr _allocations = 0;
 
     public:
 
@@ -493,12 +491,9 @@ namespace micro_alloc {
 #endif
                         _free_list_root = new_block.header();
                     }
-
                     current_node->prev = new_block.header();
                 }
-
             }
-
             print(true);
             return true;
         }

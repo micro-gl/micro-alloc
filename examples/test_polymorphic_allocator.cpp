@@ -49,6 +49,7 @@ void test_1() {
     allocator.deallocate(allocated_memory);
 }
 
+#include <string>
 int main() {
     test_1();
 }

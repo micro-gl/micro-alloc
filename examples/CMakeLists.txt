@@ -18,6 +18,7 @@ set(SOURCES
         test_throw_allocator.cpp
         test_utils_new_array.cpp
         test_utils_new_object.cpp
+        test_static_linear_allocator.cpp
         )
 
 set(SOURCES_SHARED "")

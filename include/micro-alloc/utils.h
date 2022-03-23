@@ -19,6 +19,8 @@ namespace micro_alloc {
      * NOTE:
      * - Header info with size of array is extra allocated and written
      * - You can only release this array with delete_array function
+     * - ASSUMES the alignment of the allocator is >= alignment requirement of micro_alloc::uintptr_type,
+     *   otherwise, this will fail on computers that do not allow un-aligned access.
      *
      * @tparam U value type
      * @tparam allocator_type allocator type

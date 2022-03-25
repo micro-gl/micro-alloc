@@ -29,14 +29,11 @@ namespace micro_alloc {
      *
      * Minimal block size is 4 bytes for 32 bit pointer types and 8 bytes for 64 bits pointers.
      *
-     * @tparam uintptr_type unsigned integer type that can hold a pointer
-     *
      * @author Tomer Riko Shalev
      */
-    template<typename uintptr_type=micro_alloc::uintptr_type>
-    class pool_memory : public memory_resource<uintptr_type> {
+    class pool_memory : public memory_resource {
     private:
-        using base = memory_resource<uintptr_type>;
+        using base = memory_resource;
         using typename base::uptr;
         using base::align_up;
         using base::align_down;
@@ -45,9 +42,9 @@ namespace micro_alloc {
         using base::int_to_ptr;
         using base::align_of_uptr;
         using base::max;
-        using base::is_pointer_expressible_as_uptr;
         using base::is_alignment_pow_2;
         using base::try_throw;
+        using uintptr_type = memory_resource::uintptr_type;
 
         template<typename T>
         static T int_to(uptr integer) { return reinterpret_cast<T>(integer); }
@@ -78,8 +75,8 @@ namespace micro_alloc {
         }
 
     public:
-        uptr block_size() { return _block_size; }
-        uptr blocks_count() { return _blocks_count; }
+        uptr block_size() const { return _block_size; }
+        uptr blocks_count() const { return _blocks_count; }
         uptr free_blocks_count() const { return _free_blocks_count; }
         uptr start_aligned_address() const { return align_up(ptr_to_int(_ptr)); }
         uptr end_aligned_address() const { return align_down(ptr_to_int(_ptr) + _size); }
@@ -88,6 +85,7 @@ namespace micro_alloc {
         pool_memory() = delete;
 
         /**
+         *
          *
          * @param ptr start of memory
          * @param size_bytes the memory size in bytes
@@ -101,12 +99,11 @@ namespace micro_alloc {
         pool_memory(void *ptr, uptr size_bytes, uptr block_size,
                     uptr requested_alignment = sizeof(uintptr_type),
                     bool guard_against_double_free = false) :
-                base(3, max(requested_alignment, sizeof(uptr))), _ptr(ptr), _size(size_bytes), _block_size(0),
-                _guard_against_double_free(guard_against_double_free) {
+                        base(3, max(requested_alignment, sizeof(uintptr_type))), _ptr(ptr),
+                        _size(size_bytes), _block_size(0), _guard_against_double_free(guard_against_double_free) {
             const bool is_memory_valid_1 = correct_block_size(block_size) <= size_bytes;
-            const bool is_memory_valid_2 = is_pointer_expressible_as_uptr();
             const bool is_memory_valid_3 = is_alignment_pow_2();
-            const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2 and is_memory_valid_3;
+            const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_3;
             if (is_memory_valid) reset(block_size);
             this->_is_valid = is_memory_valid;
 
@@ -121,11 +118,11 @@ namespace micro_alloc {
                 std::cout << "* first block @ " << ptr_to_int(_free_list_root) << std::endl;
             if (!is_memory_valid_1)
                 std::cout << "* memory does not satisfy minimal size requirements !!!\n";
-            if (!is_memory_valid_2)
-                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!\n";
             if (!is_memory_valid_3)
                 std::cout << "* error:: final alignment should be a power of 2\n";
             if(!is_memory_valid) try_throw();
+            // I invoke a virtual method from a constructor, BUT it will invoke the local copy,
+            // which is OK
             print(false);
 #endif
         }
@@ -244,10 +241,10 @@ namespace micro_alloc {
 #endif
         }
 
-        bool is_equal(const memory_resource<> &other) const noexcept override {
+        bool is_equal(const memory_resource &other) const noexcept override {
             bool equals = this->type_id() == other.type_id();
             if (!equals) return false;
-            const auto *casted_other = reinterpret_cast<const pool_memory<> *>(&other);
+            const auto *casted_other = reinterpret_cast<const pool_memory *>(&other);
             equals = this->_ptr == casted_other->_ptr;
             return equals;
         }

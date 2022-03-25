@@ -17,14 +17,15 @@ namespace micro_alloc {
 
     /**
     * Polymorphic Allocator, that uses exchangeable memory resources
+     *
     * @tparam T the allocated object type
-    * @tparam uintptr_type per system unsigned integral type that is the size of a pointer
     */
-    template<typename T=char, typename uintptr_type=micro_alloc::uintptr_type>
+    template<typename T=char>
     class polymorphic_allocator {
     public:
         using value_type = T;
-        using memory = memory_resource<uintptr_type>;
+        using memory = memory_resource;
+        using uintptr_type = memory::uintptr_type;
         using size_t = uintptr_type;
         static const uintptr_type default_align = sizeof(uintptr_type);
 
@@ -35,10 +36,10 @@ namespace micro_alloc {
         polymorphic_allocator() = delete;
 
         template<class U>
-        explicit polymorphic_allocator(const polymorphic_allocator<U, uintptr_type> &other) noexcept
+        explicit polymorphic_allocator(const polymorphic_allocator<U> &other) noexcept
                 : polymorphic_allocator{other.resource()} {}
 
-        explicit polymorphic_allocator(memory_resource<uintptr_type> *r) : _mem{r} {}
+        explicit polymorphic_allocator(memory_resource *r) : _mem{r} {}
 
         memory *resource() const { return _mem; }
 
@@ -77,17 +78,17 @@ namespace micro_alloc {
         polymorphic_allocator &operator=(polymorphic_allocator) = delete;
 
         polymorphic_allocator select_on_container_copy_construction(const polymorphic_allocator &dummy) const {
-            return polymorphic_allocator<T, uintptr_type>(*this);
+            return polymorphic_allocator<T>(*this);
         }
 
         template<class U> struct rebind {
-            typedef polymorphic_allocator<U, uintptr_type> other;
+            typedef polymorphic_allocator<U> other;
         };
     };
 
     template<class T1, class T2, typename uintptr_type>
-    bool operator==(const polymorphic_allocator<T1, uintptr_type> &lhs,
-                    const polymorphic_allocator<T2, uintptr_type> &rhs) noexcept {
+    bool operator==(const polymorphic_allocator<T1> &lhs,
+                    const polymorphic_allocator<T2> &rhs) noexcept {
         return *(lhs.resource()) == *(rhs.resource());
     }
 }

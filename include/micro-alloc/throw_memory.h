@@ -21,14 +21,13 @@ namespace micro_alloc {
     /**
      * Throw memory, throws upon malloc/free
      *
-     * @tparam uintptr_type unsigned integer type that can hold a pointer
      */
-    template<typename uintptr_type=micro_alloc::uintptr_type>
-    class throw_memory : public memory_resource<uintptr_type> {
+    class throw_memory : public memory_resource {
     private:
-        using base = memory_resource<uintptr_type>;
+        using base = memory_resource;
         using base::ptr_to_int;
         using typename base::uptr;
+        using uintptr_type = memory_resource::uintptr_type;
 
     public:
         struct throw_memory_exception {};

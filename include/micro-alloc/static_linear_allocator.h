@@ -10,7 +10,7 @@
 ========================================================================================*/
 #pragma once
 
-#include "traits.h"
+//#include "traits.h"
 
 #ifdef MICRO_ALLOC_DEBUG
 #include <iostream>
@@ -93,8 +93,27 @@ namespace micro_alloc {
     template<typename T=unsigned char, unsigned SizeBytes=1024, unsigned BANK=0>
     class static_linear_allocator {
     private:
+        template<class Ty> struct remove_reference      {typedef Ty type;};
+        template<class Ty> struct remove_reference<Ty&>  {typedef Ty type;};
+        template<class Ty> struct remove_reference<Ty&&> {typedef Ty type;};
+
+        template <class _Tp> inline typename remove_reference<_Tp>::type&&
+        move(_Tp&& __t) noexcept
+        {
+            typedef typename remove_reference<_Tp>::type _Up;
+            return static_cast<_Up&&>(__t);
+        }
+        template <class _Tp> inline _Tp&&
+        forward(typename remove_reference<_Tp>::type& __t) noexcept
+        { return static_cast<_Tp&&>(__t); }
+
+        template <class _Tp> inline _Tp&&
+        forward(typename remove_reference<_Tp>::type&& __t) noexcept
+        { return static_cast<_Tp&&>(__t); }
+
         template<bool B, class TRUE, class FALSE> struct cond { typedef TRUE type; };
         template<class TRUE, class FALSE> struct cond<false, TRUE, FALSE> { typedef FALSE type; };
+        static constexpr unsigned int PS = sizeof (void *);
         /**
          * An integral type, that is suitable to hold a pointer address
          */
@@ -123,7 +142,7 @@ namespace micro_alloc {
 
         template<class U, class... Args>
         void construct(U *p, Args &&... args) {
-            ::new(p) U(micro_alloc::traits::forward<Args>(args)...);
+            ::new(p) U(forward<Args>(args)...);
         }
 
         memory_info & storage() {

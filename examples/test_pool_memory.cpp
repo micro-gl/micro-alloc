@@ -10,7 +10,7 @@ void test_1() {
     const int size = 1024;
     byte memory[size];
 
-    pool_memory<> alloc{memory, size, 32, 4, true};
+    pool_memory alloc{memory, size, 32, 4, true};
 
     void  * p1 = alloc.malloc();
     void  * p2 = alloc.malloc();

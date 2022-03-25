@@ -38,19 +38,11 @@ namespace micro_alloc {
      * Block is:
      *  [..aligned data.. | distance to prev block end]
      *
-     * @tparam uintptr_type unsigned integer type that can hold a pointer
-     * @tparam alignment alignment requirement, must be valid power of 2, that can satisfy
-     *         the highest alignment requirement that you wish to store in the memory dynamic_memory.
-     *         alignment of atomic types usually equals their size.
-     *         alignment of struct types equals the maximal alignment among it's member types.
-     *         if you have std lib, you can infer these, otherwise, just plug them if you know
-     *
      * @author Tomer Riko Shalev
      */
-    template<typename uintptr_type=micro_alloc::uintptr_type>
-    class stack_memory : public memory_resource<uintptr_type> {
+    class stack_memory : public memory_resource {
     private:
-        using base = memory_resource<uintptr_type>;
+        using base = memory_resource;
         using typename base::uptr;
         using base::align_of_uptr;
         using base::align_up;
@@ -60,8 +52,8 @@ namespace micro_alloc {
         using base::int_to_ptr;
         using base::int_to;
         using base::is_alignment_pow_2;
-        using base::is_pointer_expressible_as_uptr;
         using base::try_throw;
+        using uintptr_type = memory_resource::uintptr_type;
 
         template<typename T>
         static T int_to(uptr integer) { return reinterpret_cast<T>(integer); }
@@ -86,11 +78,11 @@ namespace micro_alloc {
          * @param alignment power of 2 alignment
          */
         stack_memory(void *ptr, uptr size_bytes, uptr alignment = sizeof(uintptr_type)) :
-                base{4, alignment}, _ptr(ptr), _size(size_bytes), _current_block_end(0) {
+                base{4, max(sizeof (uintptr_type), alignment)}, _ptr(ptr), _size(size_bytes), _current_block_end(0) {
             const bool is_memory_valid_1 = alignment_of_footer() <= size_bytes;
-            const bool is_memory_valid_2 = is_pointer_expressible_as_uptr();
+            const bool is_memory_valid_2 = alignment_of_footer() <= size_bytes;
             const bool is_memory_valid_3 = is_alignment_pow_2();
-            const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2 and is_memory_valid_3;
+            const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_3;
             if (is_memory_valid) _current_block_end = align_up(ptr_to_int(_ptr));
             this->_is_valid = is_memory_valid;
 
@@ -98,11 +90,10 @@ namespace micro_alloc {
             std::cout << "\nHELLO:: stack memory resource\n";
             std::cout << "* requested alignment is " << alignment << " bytes" << std::endl;
             std::cout << "* final alignment is " << this->alignment << " bytes" << std::endl;
-            std::cout << "* minimal block size due to headers and alignment is " << alignment_of_footer() << " bytes\n";
+            std::cout << "* minimal block size due to footer and alignment is " << alignment_of_footer() << " bytes\n";
+            std::cout << "* principal mem due to alignment " << end_aligned_address()-start_aligned_address() << " bytes\n";
             if (!is_memory_valid_1)
                 std::cout << "* error:: memory does not satisfy minimal size requirements !!!\n";
-            if (!is_memory_valid_2)
-                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!\n";
             if (!is_memory_valid_3)
                 std::cout << "* error:: final alignment should be a power of 2\n";
 #endif
@@ -213,10 +204,10 @@ namespace micro_alloc {
 #endif
         }
 
-        bool is_equal(const memory_resource<> &other) const noexcept override {
+        bool is_equal(const memory_resource &other) const noexcept override {
             bool equals = this->type_id() == other.type_id();
             if (!equals) return false;
-            const auto *casted_other = reinterpret_cast<const stack_memory<> *>(&other);
+            const auto *casted_other = reinterpret_cast<const stack_memory *>(&other);
             equals = this->_ptr == casted_other->_ptr;
             return equals;
         }

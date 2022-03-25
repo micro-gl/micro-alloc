@@ -12,8 +12,6 @@
 
 #include "memory_resource.h"
 
-//#define MICRO_ALLOC_DEBUG
-
 #ifdef MICRO_ALLOC_DEBUG
 #include <iostream>
 #endif
@@ -27,9 +25,10 @@ namespace micro_alloc {
      *
      * @author Tomer Riko Shalev
      */
-    class std_memory : public memory_resource<micro_alloc::uintptr_type> {
+    class std_memory : public memory_resource {
     private:
-        using base = memory_resource<micro_alloc::uintptr_type>;
+        using base = memory_resource;
+        using uintptr_type = memory_resource::uintptr_type;
 
     public:
 
@@ -38,7 +37,7 @@ namespace micro_alloc {
          *
          * @param alignment alignment requirement
          */
-        explicit std_memory(uptr alignment = sizeof(unsigned long)) :
+        explicit std_memory(uptr alignment = sizeof(uintptr_type)) :
                 base{0, alignment} {
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << std::endl << "HELLO:: standard memory resource" << std::endl;
@@ -68,7 +67,7 @@ namespace micro_alloc {
         void print(bool embed) const override {
         }
 
-        bool is_equal(const memory_resource<> &other) const noexcept override {
+        bool is_equal(const memory_resource &other) const noexcept override {
             bool equals = this->type_id() == other.type_id();
             return equals;
         }

@@ -21,14 +21,13 @@ namespace micro_alloc {
     /**
      * Void memory, does nothing
      *
-     * @tparam uintptr_type unsigned integer type that can hold a pointer
      */
-    template<typename uintptr_type=micro_alloc::uintptr_type>
-    class void_memory : public memory_resource<uintptr_type> {
+    class void_memory : public memory_resource {
     private:
-        using base = memory_resource<uintptr_type>;
+        using base = memory_resource;
         using base::ptr_to_int;
         using typename base::uptr;
+        using uintptr_type = memory_resource::uintptr_type;
 
     public:
 
@@ -51,8 +50,8 @@ namespace micro_alloc {
         }
 
         bool free(void *pointer) override {
-            auto address = ptr_to_int(pointer);
 #ifdef MICRO_ALLOC_DEBUG
+            auto address = ptr_to_int(pointer);
             std::cout << "\nFREE:: void memory\n- free address @ " << address << "\n";
 #endif
             return true;

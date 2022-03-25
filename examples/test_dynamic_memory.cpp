@@ -10,7 +10,7 @@ void test_1() {
     const int size = 5000;
     byte memory[size];
 
-    dynamic_memory<> alloc{memory, size};
+    dynamic_memory alloc{memory, size};
 
     void * a1 = alloc.malloc(200);
     void * a2 = alloc.malloc(200);

@@ -27,19 +27,11 @@ namespace micro_alloc {
  * - Allocations are O(1)
  * - Free does not do anything
  *
- * @tparam uintptr_type unsigned integer type that can hold a pointer
- * @tparam alignment alignment requirement, must be valid power of 2, that can satisfy
- *         the highest alignment requirement that you wish to store in the memory dynamic_memory.
- *         alignment of atomic types usually equals their size.
- *         alignment of struct types equals the maximal alignment among it's member types.
- *         if you have std lib, you can infer these, otherwise, just plug them if you know
- *
  * @author Tomer Riko Shalev
  */
-    template<typename uintptr_type=micro_alloc::uintptr_type>
-    class linear_memory : public memory_resource<uintptr_type> {
+    class linear_memory : public memory_resource {
     private:
-        using base = memory_resource<uintptr_type>;
+        using base = memory_resource;
         using typename base::uptr;
         using base::align_up;
         using base::align_down;
@@ -49,7 +41,7 @@ namespace micro_alloc {
         using base::int_to;
         using base::try_throw;
         using base::is_alignment_pow_2;
-        using base::is_pointer_expressible_as_uptr;
+        using uintptr_type = uptr;
 
         void *_ptr;
         void *_current_ptr;
@@ -67,15 +59,13 @@ namespace micro_alloc {
          */
         linear_memory(void *ptr, uptr size_bytes, uptr alignment = sizeof(uintptr_type)) :
                 base{1, alignment}, _ptr(ptr), _current_ptr(nullptr), _size(size_bytes) {
-            const bool is_memory_valid = is_pointer_expressible_as_uptr() and is_alignment_pow_2();
+            const bool is_memory_valid = is_alignment_pow_2();
             this->_is_valid = is_memory_valid;
 
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << "\nHELLO:: linear memory resource\n";
             std::cout << "* requested alignment is " << alignment << " bytes" << std::endl;
             std::cout << "* size is " << size_bytes << " bytes" << std::endl;
-            if (!is_pointer_expressible_as_uptr())
-                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!\n";
             if (!is_alignment_pow_2())
                 std::cout << "* error:: alignment should be a power of 2\n";
 #endif
@@ -150,7 +140,7 @@ namespace micro_alloc {
 #endif
         }
 
-        bool is_equal(const memory_resource<> &other) const noexcept override {
+        bool is_equal(const memory_resource &other) const noexcept override {
             bool equals = this->type_id() == other.type_id();
             if (!equals) return false;
             const auto *casted_other = static_cast<const linear_memory *>(&other);

@@ -11,7 +11,6 @@
 #pragma once
 
 #include "memory_resource.h"
-//#define MICRO_ALLOC_DEBUG
 
 #ifdef MICRO_ALLOC_DEBUG
 #include <iostream>
@@ -38,7 +37,7 @@ namespace micro_alloc {
      * Free block layout is:
      * [ size|1 | prev | next | ... padding .... | size|1 ]
      *
-     * - SizeBytes includes the whole block size in bytes, it is a power of 2, bigger than 1.
+     * - size includes the whole block size in bytes, it is a power of 2, bigger than 1.
      * - The last bit of size indicates allocation status [1==allocated, 0==free],
      *   last bit is always unused for power of two integers, that are not equal to 1,
      *   and since we have a minimum of 16 bytes block, the last three bits are always unused.
@@ -52,14 +51,11 @@ namespace micro_alloc {
      *     the risk of freeing a non-block.
      *   - I test that pointers are aligned to the requested alignment.
      *
-     * @tparam uintptr_type unsigned integer type that can hold a pointer
-     *
      * @author Tomer Riko Shalev
      */
-    template<typename uintptr_type=micro_alloc::uintptr_type>
-    class dynamic_memory : public memory_resource<uintptr_type> {
+    class dynamic_memory : public memory_resource {
     private:
-        using base = memory_resource<uintptr_type>;
+        using base = memory_resource;
         using typename base::uptr;
         using base::align_up;
         using base::align_down;
@@ -68,9 +64,9 @@ namespace micro_alloc {
         using base::int_to_ptr;
         using base::int_to;
         using base::is_alignment_pow_2;
-        using base::is_pointer_expressible_as_uptr;
         using base::try_throw;
         using base::max;
+        using uintptr_type = memory_resource::uintptr_type;
 
         struct base_header_t {
             uptr size_and_status = 0;
@@ -98,7 +94,7 @@ namespace micro_alloc {
 
         struct block_t {
             uptr aligned_from = 0, aligned_to = 0;
-            const dynamic_memory<uintptr_type> *allocator;
+            const dynamic_memory *allocator;
 
             header_t *header() const {
                 return reinterpret_cast<header_t *>(aligned_from);
@@ -223,16 +219,15 @@ namespace micro_alloc {
          *
          * @param ptr pointer of starting pool
          * @param size_bytes amount of bytes
-         * @param alignment alignment has to be a power of 2
+         * @param alignment alignment has to be a power of 2 and >= alignment of pointer
          */
         dynamic_memory(void *ptr, unsigned int size_bytes, uptr alignment = sizeof(uintptr_type)) :
-                base(2, max(alignment, sizeof(uptr))), _ptr(ptr), _free_list_root(nullptr),
-                                                _allocations(0), _size(size_bytes) {
+            base(2, max(alignment, sizeof(uintptr_type))), _ptr(ptr),
+                        _free_list_root(nullptr), _allocations(0), _size(size_bytes) {
             const auto block = create_free_block(this->ptr_to_int(ptr), this->ptr_to_int(ptr) + size_bytes);
             const bool is_memory_valid_1 = block.size() >= minimal_size_of_any_block();
-            const bool is_memory_valid_2 = is_pointer_expressible_as_uptr();
             const bool is_memory_valid_3 = is_alignment_pow_2();
-            const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_2 and is_memory_valid_3;
+            const bool is_memory_valid = is_memory_valid_1 and is_memory_valid_3;
 
 #ifdef MICRO_ALLOC_DEBUG
             std::cout << "\nHELLO:: dynamic memory resource\n";
@@ -244,8 +239,6 @@ namespace micro_alloc {
 
             if (!is_memory_valid_1)
                 std::cout << "* error:: memory does not satisfy minimal size requirements !!!\n";
-            if (!is_memory_valid_2)
-                std::cout << "* error:: a pointer is not expressible as uintptr_type !!!\n";
             if (!is_memory_valid_3)
                 std::cout << "* error:: final alignment should be a power of 2\n";
             print(false);
@@ -439,8 +432,8 @@ namespace micro_alloc {
 #endif
                 _free_list_root = new_block.header();
             }
-                // if coalesce happened, then we can use the locations to insert
-                // into the sorted list in O(1) instead of searching
+            // if coalesce happened, then we can use the locations to insert
+            // into the sorted list in O(1) instead of searching
             else if (left_hint_node) { // insert to the right of hint
                 new_block.header()->next = left_hint_node->next;
                 new_block.header()->prev = left_hint_node;
@@ -518,10 +511,10 @@ namespace micro_alloc {
 #endif
         }
 
-        bool is_equal(const memory_resource<> &other) const noexcept override {
+        bool is_equal(const memory_resource &other) const noexcept override {
             bool equals = this->type_id() == other.type_id();
             if (!equals) return false;
-            const auto *casted_other = static_cast<const dynamic_memory<> *>(&other);
+            const auto *casted_other = static_cast<const dynamic_memory *>(&other);
             equals = this->_ptr == casted_other->_ptr;
             return equals;
         }

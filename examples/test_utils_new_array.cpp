@@ -22,7 +22,7 @@ void test_1() {
     const int size = 5000;
     byte memory[size];
 
-    dynamic_memory<> mem_resource{memory, size};
+    dynamic_memory mem_resource{memory, size};
     polymorphic_allocator<dummy_t> allocator(&mem_resource);
 
     // allocate raw memory that can for 5 dummies
@@ -34,7 +34,7 @@ void test_2() {
     const int size = 5000;
     byte memory[size];
 
-    dynamic_memory<> mem_resource{memory, size};
+    dynamic_memory mem_resource{memory, size};
     polymorphic_allocator<dummy_t> allocator(&mem_resource);
 
     // allocate raw memory that can for 5 dummies

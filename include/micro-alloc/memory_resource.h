@@ -10,25 +10,33 @@
 ========================================================================================*/
 #pragma once
 
-#include "utils.h"
-
-#ifdef MICRO_ALLOC_ENABLE_THROW
-#include <stdexcept>
-#endif
-
 namespace micro_alloc {
 
-/**
- * Memory Resource is a runtime polymorphic interface for handling memory allocations
- * @tparam uintptr_type unsigned integer type that is the size of a pointer
- */
-    template<typename uintptr_type=micro_alloc::uintptr_type>
+    /**
+     * Memory Resource is a runtime polymorphic interface for handling memory allocations
+     *
+     */
     class memory_resource {
     private:
+        template<bool B, class TRUE, class FALSE> struct cond { typedef TRUE type; };
+        template<class TRUE, class FALSE> struct cond<false, TRUE, FALSE> { typedef FALSE type; };
+        static constexpr unsigned int PS = sizeof (void *);
+
         const char _type_id;
+
     protected:
         bool _is_valid;
+
     public:
+        /**
+         * An integral type, that is suitable to hold a pointer address
+         */
+        using uintptr_type = typename cond<
+                PS==sizeof(unsigned short), unsigned short ,
+                typename cond<
+                PS==sizeof(unsigned int), unsigned int,
+                typename cond<
+                PS==sizeof(unsigned long), unsigned long, unsigned long long>::type>::type>::type;
         using uptr = uintptr_type;
 
         uptr alignment;
@@ -38,7 +46,6 @@ namespace micro_alloc {
         inline static uptr min(const uptr a, const uptr b) { return a<b?a:b; }
         inline static uptr is_pow_2(const uptr v) { return v && !(v & (v - 1)); }
         inline uptr is_alignment_pow_2() const { return is_pow_2(alignment); }
-        inline static constexpr uptr is_pointer_expressible_as_uptr() { return sizeof(void *) == sizeof(uintptr_type); }
         inline uptr align_up(const uptr address) const { return align_up(address, alignment); }
         inline uptr align_down(const uptr address) const { return align_down(address, alignment); }
         static inline uptr align_up(const uptr address, const uptr alignment) {
@@ -59,7 +66,8 @@ namespace micro_alloc {
         char type_id() const { return _type_id; }
         void try_throw() {
 #ifdef MICRO_ALLOC_ENABLE_THROW
-            throw std::exception();
+            struct throw_memory{};
+            throw throw_memory{};
 #endif
         }
 
@@ -114,9 +122,8 @@ namespace micro_alloc {
 
     };
 
-    template<typename uintptr_type>
-    bool operator==(const memory_resource<uintptr_type> &a,
-                    const memory_resource<uintptr_type> &b) noexcept {
+    bool operator==(const memory_resource &a,
+                    const memory_resource &b) noexcept {
         return &a == &b || a.is_equal(b);
     }
 }

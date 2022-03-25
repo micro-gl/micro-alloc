@@ -5,7 +5,7 @@
 Check out our website at [micro-gl.github.io/docs/micro-alloc/](micro-gl.github.io/docs/micro-alloc)
 ## Introduction
 This lib includes several memory resources, that you can configure and can be optionally used with the included   
-polymorphic allocator(included), which implements a valid `C++11` allocator.  
+**polymorphic allocator(included)**, which implements a valid `C++11` allocator.  
 It is advised to have a look at the `examples` folder as it is much simple to see  
 the following memory resources are implemented:
 ### **Dynamic memory (heap)**:  
@@ -54,6 +54,12 @@ beginning. this memory is not shrinking.
 ### **STD memory**:
 Standard memory resource    
 Uses the standard default memory allocations operators techniques present in the system
+
+### **Allocators**:
+- `Polymorphic_allocator` - goes with memory resources that are written above
+- `std_rebind_allocator` - classic allocator that uses the global new/delete operator
+- `static_linear_allocator` - self-contained static storage with tagged banks and sizes, allocates linearly, similar
+to the linear memory resource.
 
 ## Installing `micro{alloc}`
 `micro-alloc` is a headers only library, which gives the following install possibilities:

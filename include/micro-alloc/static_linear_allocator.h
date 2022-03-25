@@ -10,8 +10,6 @@
 ========================================================================================*/
 #pragma once
 
-//#include "traits.h"
-
 #ifdef MICRO_ALLOC_DEBUG
 #include <iostream>
 #endif
